@@ -10,6 +10,8 @@
  * Text Domain: lipishilpo-pro
  * Domain Path: /languages
  * Requires Plugins: lipishilpo
+ * Requires at least: 6.0
+ * Requires PHP: 7.4
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -32,13 +34,11 @@ function lipishilpo_pro_bootstrap() {
 		return;
 	}
 
-	// 1. Declare Pro active to core plugin
-	add_filter( 'lipishilpo_is_pro', '__return_true' );
+	load_plugin_textdomain( 'lipishilpo-pro', false, dirname( plugin_basename( LIPISHILPO_PRO_FILE ) ) . '/languages' );
 
-	// 2. Pro font directory filter
-	add_filter( 'lipishilpo_fonts_url', function() {
-		return LIPISHILPO_PRO_URL . 'assets/fonts';
-	} );
+	add_filter( 'lipishilpo_is_pro', 'lipishilpo_pro_is_licensed' );
+
+	add_filter( 'lipishilpo_fonts_url', 'lipishilpo_pro_fonts_url' );
 
 	// 3. Load Pro classes
 	require_once LIPISHILPO_PRO_DIR . 'includes/class-pro-admin.php';
@@ -48,6 +48,26 @@ function lipishilpo_pro_bootstrap() {
 	Lipishilpo_Pro_Admin::init();
 	Lipishilpo_Pro_Analyze::init();
 	Lipishilpo_Pro_Export::init();
+
+	add_action( 'lipishilpo_enqueue_assets', 'lipishilpo_pro_enqueue_assets' );
+}
+
+function lipishilpo_pro_enqueue_assets() {
+	$asset_file = LIPISHILPO_PRO_DIR . 'assets/js/lipishilpo-pro-editor.asset.php';
+	$asset      = file_exists( $asset_file )
+		? require $asset_file
+		: array(
+			'dependencies' => array(),
+			'version'      => LIPISHILPO_PRO_VERSION,
+		);
+
+	wp_enqueue_script(
+		'lipishilpo-pro-editor',
+		LIPISHILPO_PRO_URL . 'assets/js/lipishilpo-pro-editor.js',
+		$asset['dependencies'],
+		$asset['version'],
+		true
+	);
 }
 
 /**
@@ -62,4 +82,27 @@ function lipishilpo_pro_missing_parent_notice() {
 		</p>
 	</div>
 	<?php
+}
+
+/**
+ * Local license gate: a non-empty saved key marked valid unlocks Pro.
+ */
+function lipishilpo_pro_is_licensed( $is_pro = false ) {
+	$key    = trim( (string) get_option( 'lipishilpo_license_key', '' ) );
+	$status = (string) get_option( 'lipishilpo_license_status', '' );
+
+	if ( $key !== '' && $status !== 'valid' ) {
+		update_option( 'lipishilpo_license_status', 'valid' );
+		$status = 'valid';
+	}
+
+	return $key !== '' && $status === 'valid';
+}
+
+function lipishilpo_pro_fonts_url( $url ) {
+	$regular = LIPISHILPO_PRO_DIR . 'assets/fonts/NotoSerifBengali-Regular.ttf';
+	if ( file_exists( $regular ) ) {
+		return LIPISHILPO_PRO_URL . 'assets/fonts';
+	}
+	return $url;
 }

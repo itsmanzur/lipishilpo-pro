@@ -2,8 +2,6 @@
 /**
  * Export REST API — Lipishilpo Pro
  *
- * Provides DOCX, PDF, and EPUB export capabilities and Pro status.
- *
  * Endpoint:
  *   GET /wp-json/lipishilpo/v1/export/status
  */
@@ -25,18 +23,23 @@ class Lipishilpo_Pro_Export {
 			array(
 				'methods'             => WP_REST_Server::READABLE,
 				'callback'            => array( __CLASS__, 'status' ),
-				'permission_callback' => array( 'Lipishilpo_Projects', 'require_login' ),
+				'permission_callback' => array( 'Lipishilpo_Projects', 'require_writer' ),
 			)
 		);
 	}
 
 	public static function status( $request ) {
-		return rest_ensure_response( array(
-			'pro'  => true,
-			'docx' => true,
-			'pdf'  => true,
-			'epub' => true,
-			'txt'  => true,
-		) );
+		$licensed = function_exists( 'lipishilpo_is_pro' ) && lipishilpo_is_pro();
+		$fonts    = file_exists( LIPISHILPO_PRO_DIR . 'assets/fonts/NotoSerifBengali-Regular.ttf' );
+
+		return rest_ensure_response(
+			array(
+				'pro'  => $licensed,
+				'docx' => $licensed,
+				'pdf'  => $licensed && $fonts,
+				'epub' => $licensed && $fonts,
+				'txt'  => true,
+			)
+		);
 	}
 }

@@ -22,7 +22,7 @@ class Lipishilpo_Pro_Admin {
 			'lipishilpo_openai_key',
 			array(
 				'type'              => 'string',
-				'sanitize_callback' => 'sanitize_text_field',
+				'sanitize_callback' => array( __CLASS__, 'sanitize_openai_key' ),
 				'default'           => '',
 			)
 		);
@@ -42,7 +42,7 @@ class Lipishilpo_Pro_Admin {
 			'lipishilpo_license_key',
 			array(
 				'type'              => 'string',
-				'sanitize_callback' => 'sanitize_text_field',
+				'sanitize_callback' => array( __CLASS__, 'sanitize_license_key' ),
 				'default'           => '',
 			)
 		);
@@ -98,6 +98,24 @@ class Lipishilpo_Pro_Admin {
 		echo '<p>' . esc_html__( 'Enter your Lipishilpo Pro license key to activate updates and premium features.', 'lipishilpo-pro' ) . '</p>';
 	}
 
+	public static function sanitize_openai_key( $value ) {
+		$value = sanitize_text_field( $value );
+		if ( $value === '' ) {
+			return (string) get_option( 'lipishilpo_openai_key', '' );
+		}
+		return $value;
+	}
+
+	public static function sanitize_license_key( $value ) {
+		$value = sanitize_text_field( $value );
+		if ( $value === '' ) {
+			update_option( 'lipishilpo_license_status', 'inactive' );
+			return '';
+		}
+		update_option( 'lipishilpo_license_status', 'valid' );
+		return $value;
+	}
+
 	public static function render_openai_key_field() {
 		$value  = get_option( 'lipishilpo_openai_key', '' );
 		$masked = $value ? substr( $value, 0, 8 ) . str_repeat( '•', 20 ) : '';
@@ -106,10 +124,10 @@ class Lipishilpo_Pro_Admin {
 			type="password"
 			id="lipishilpo_openai_key"
 			name="lipishilpo_openai_key"
-			value="<?php echo esc_attr( $value ); ?>"
+			value=""
 			class="regular-text"
-			placeholder="sk-..."
-			autocomplete="off"
+			placeholder="<?php echo $value ? esc_attr__( 'Leave blank to keep the saved key', 'lipishilpo-pro' ) : 'sk-...'; ?>"
+			autocomplete="new-password"
 		/>
 		<?php if ( $masked ) : ?>
 			<p class="description">
@@ -148,7 +166,8 @@ class Lipishilpo_Pro_Admin {
 	}
 
 	public static function render_license_field() {
-		$value = get_option( 'lipishilpo_license_key', '' );
+		$value  = get_option( 'lipishilpo_license_key', '' );
+		$status = get_option( 'lipishilpo_license_status', '' );
 		?>
 		<input
 			type="password"
@@ -160,7 +179,13 @@ class Lipishilpo_Pro_Admin {
 			autocomplete="off"
 		/>
 		<p class="description">
-			<?php esc_html_e( 'Enter the Pro license key obtained from lipishilpo.com.', 'lipishilpo-pro' ); ?>
+			<?php
+			if ( $value && $status === 'valid' ) {
+				esc_html_e( 'License key is saved and Pro features are unlocked.', 'lipishilpo-pro' );
+			} else {
+				esc_html_e( 'Enter the Pro license key obtained from lipishilpo.com. Features stay locked until a key is saved.', 'lipishilpo-pro' );
+			}
+			?>
 		</p>
 		<?php
 	}
@@ -185,15 +210,16 @@ class Lipishilpo_Pro_Admin {
 				result.textContent = 'Testing connection…';
 				result.style.color = '#666';
 				try {
-					const resp = await fetch('<?php echo esc_url( get_rest_url( null, 'lipishilpo/v1/analyze' ) ); ?>', {
+					const resp = await fetch('<?php echo esc_url( get_rest_url( null, 'lipishilpo/v1/analyze/test' ) ); ?>', {
+						method: 'POST',
 						headers: { 'X-WP-Nonce': '<?php echo esc_js( wp_create_nonce( 'wp_rest' ) ); ?>' }
 					});
 					const data = await resp.json();
-					if (data.configured) {
-						result.textContent = '✅ Connection successful! Active model: ' + data.model;
+					if (data.ok) {
+						result.textContent = '✅ Connection successful! Active model: ' + (data.model || '');
 						result.style.color = '#155724';
 					} else {
-						result.textContent = '❌ API key is not configured or invalid.';
+						result.textContent = '❌ ' + (data.message || 'API key is not configured or invalid.');
 						result.style.color = '#721c24';
 					}
 				} catch (e) {

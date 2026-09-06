@@ -31,21 +31,62 @@ class Lipishilpo_Pro_Analyze {
 				array(
 					'methods'             => WP_REST_Server::READABLE,
 					'callback'            => array( __CLASS__, 'status' ),
-					'permission_callback' => array( __CLASS__, 'require_login' ),
+					'permission_callback' => array( __CLASS__, 'require_ai_access' ),
 				),
 				array(
 					'methods'             => WP_REST_Server::CREATABLE,
 					'callback'            => array( __CLASS__, 'analyze' ),
-					'permission_callback' => array( __CLASS__, 'require_login' ),
+					'permission_callback' => array( __CLASS__, 'require_ai_access' ),
 				),
+			)
+		);
+
+		register_rest_route(
+			LIPISHILPO_REST_NAMESPACE,
+			'/analyze/test',
+			array(
+				'methods'             => WP_REST_Server::CREATABLE,
+				'callback'            => array( __CLASS__, 'test_connection' ),
+				'permission_callback' => array( __CLASS__, 'require_manage_options' ),
 			)
 		);
 	}
 
 	public static function require_login() {
+		return self::require_ai_access();
+	}
+
+	public static function require_ai_access() {
 		if ( ! is_user_logged_in() ) {
 			return new WP_Error( 'lipishilpo_auth', __( 'Please sign in to access AI analysis.', 'lipishilpo-pro' ), array( 'status' => 401 ) );
 		}
+		if ( ! current_user_can( 'edit_posts' ) ) {
+			return new WP_Error( 'lipishilpo_auth', __( 'You need permission to edit posts to use AI analysis.', 'lipishilpo-pro' ), array( 'status' => 403 ) );
+		}
+		if ( ! function_exists( 'lipishilpo_is_pro' ) || ! lipishilpo_is_pro() ) {
+			return new WP_Error( 'lipishilpo_pro', __( 'A valid Lipishilpo Pro license is required.', 'lipishilpo-pro' ), array( 'status' => 403 ) );
+		}
+		return true;
+	}
+
+	public static function require_manage_options() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return new WP_Error( 'lipishilpo_auth', __( 'Only administrators can test the AI connection.', 'lipishilpo-pro' ), array( 'status' => 403 ) );
+		}
+		return true;
+	}
+
+	private static function check_rate_limit() {
+		$key   = 'lipishilpo_ai_rl_' . get_current_user_id();
+		$count = (int) get_transient( $key );
+		if ( $count >= 30 ) {
+			return new WP_Error(
+				'lipishilpo_rate',
+				__( 'AI request limit reached. Please try again in an hour.', 'lipishilpo-pro' ),
+				array( 'status' => 429 )
+			);
+		}
+		set_transient( $key, $count + 1, HOUR_IN_SECONDS );
 		return true;
 	}
 
@@ -55,14 +96,65 @@ class Lipishilpo_Pro_Analyze {
 
 		return rest_ensure_response( array(
 			'configured'   => ! empty( $config['key'] ),
-			'pro'          => true,
+			'pro'          => function_exists( 'lipishilpo_is_pro' ) && lipishilpo_is_pro(),
 			'model'        => $config['model'],
 			'maxPartChars' => self::MAX_PART_CHARS,
 		) );
 	}
 
+	public static function test_connection( $request ) {
+		$config = self::get_config();
+		if ( empty( $config['key'] ) ) {
+			return rest_ensure_response( array(
+				'ok'      => false,
+				'message' => __( 'API key is not configured.', 'lipishilpo-pro' ),
+			) );
+		}
+
+		$response = wp_remote_get(
+			'https://api.openai.com/v1/models',
+			array(
+				'timeout' => 20,
+				'headers' => array(
+					'Authorization' => 'Bearer ' . $config['key'],
+				),
+			)
+		);
+
+		if ( is_wp_error( $response ) ) {
+			return rest_ensure_response( array(
+				'ok'      => false,
+				'message' => __( 'Could not reach the AI service.', 'lipishilpo-pro' ),
+			) );
+		}
+
+		$code = wp_remote_retrieve_response_code( $response );
+		if ( $code === 200 ) {
+			return rest_ensure_response( array(
+				'ok'    => true,
+				'model' => $config['model'],
+			) );
+		}
+		if ( $code === 401 || $code === 403 ) {
+			return rest_ensure_response( array(
+				'ok'      => false,
+				'message' => __( 'API key is invalid or unauthorized.', 'lipishilpo-pro' ),
+			) );
+		}
+
+		return rest_ensure_response( array(
+			'ok'      => false,
+			'message' => __( 'AI service is temporarily unavailable.', 'lipishilpo-pro' ),
+		) );
+	}
+
 	// ── Main Analysis ──────────────────────────────────────────────────────
 	public static function analyze( $request ) {
+		$limited = self::check_rate_limit();
+		if ( is_wp_error( $limited ) ) {
+			return $limited;
+		}
+
 		$config = self::get_config();
 		if ( empty( $config['key'] ) ) {
 			return new WP_Error(
@@ -91,7 +183,14 @@ class Lipishilpo_Pro_Analyze {
 			return new WP_Error( 'lipishilpo_invalid', __( 'Invalid analysis mode.', 'lipishilpo-pro' ), array( 'status' => 400 ) );
 
 		} catch ( Exception $e ) {
-			return new WP_Error( 'lipishilpo_ai', $e->getMessage(), array( 'status' => 502 ) );
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				error_log( 'Lipishilpo AI: ' . $e->getMessage() );
+			}
+			$msg = $e->getMessage();
+			if ( preg_match( '/sk-|api\.openai|Trace|stack|#\d/i', $msg ) ) {
+				$msg = __( 'AI analysis failed. Please try again.', 'lipishilpo-pro' );
+			}
+			return new WP_Error( 'lipishilpo_ai', $msg, array( 'status' => 502 ) );
 		}
 	}
 
@@ -147,9 +246,28 @@ class Lipishilpo_Pro_Analyze {
 			return new WP_Error( 'lipishilpo_invalid', __( 'Manuscript segment ledgers exceed valid limits.', 'lipishilpo-pro' ), array( 'status' => 400 ) );
 		}
 
-		$task   = 'Compare ALL supplied chapter/segment ledgers for whole-book continuity. Check character ages/aliases/relationships, chronological conflicts, locations, objects, dropped threads, and argument consistency appropriate to genre. A contradiction requires at least two verbatim quotes from ledgers, with chapter IDs. Consider flashbacks, unreliable narrators and intentional reveals before alleging a conflict. Distinguish possible issues from certain errors. Do not claim you read full text: this is a review of extracted chapter ledgers, which can miss details. Leave original/replacement empty. Max 20 findings. Include scope limitations in caveats.';
-		$data   = array( 'title' => $title, 'genre' => $genre, 'language' => $language, 'digests' => $digests );
-		$report = self::request_ai( $config, $task, $data, self::report_schema() );
+		$task = 'Compare ALL supplied chapter/segment ledgers for whole-book continuity. Check character ages/aliases/relationships, chronological conflicts, locations, objects, dropped threads, and argument consistency appropriate to genre. A contradiction requires at least two verbatim quotes from ledgers, with chapter IDs. Consider flashbacks, unreliable narrators and intentional reveals before alleging a conflict. Distinguish possible issues from certain errors. Do not claim you read full text: this is a review of extracted chapter ledgers, which can miss details. Leave original/replacement empty. Max 20 findings. Include scope limitations in caveats.';
+		$data = array( 'title' => $title, 'genre' => $genre, 'language' => $language, 'digests' => $digests );
+		$raw  = self::request_ai( $config, $task, $data, self::report_schema() );
+
+		$ledger_chapters = array();
+		foreach ( $digests as $digest ) {
+			if ( ! is_array( $digest ) ) {
+				continue;
+			}
+			$quotes = array();
+			foreach ( $digest['facts'] ?? array() as $fact ) {
+				if ( is_array( $fact ) && ! empty( $fact['quote'] ) ) {
+					$quotes[] = (string) $fact['quote'];
+				}
+			}
+			$ledger_chapters[] = array(
+				'id'   => isset( $digest['chapterId'] ) ? (string) $digest['chapterId'] : '',
+				'text' => trim( ( $digest['summary'] ?? '' ) . "\n" . implode( "\n", $quotes ) ),
+			);
+		}
+
+		$report = self::ground_report( $raw, $ledger_chapters );
 
 		return rest_ensure_response( array( 'report' => $report, 'model' => $config['model'], 'analyzedParts' => count( $digests ) ) );
 	}
@@ -211,10 +329,10 @@ class Lipishilpo_Pro_Analyze {
 		$content = array();
 		foreach ( $body['output'] ?? array() as $output ) {
 			foreach ( $output['content'] ?? array() as $c ) {
-				if ( $c['type'] === 'refusal' ) {
+				if ( ( $c['type'] ?? '' ) === 'refusal' ) {
 					throw new Exception( __( 'AI was unable to analyze this text.', 'lipishilpo-pro' ) );
 				}
-				if ( $c['type'] === 'output_text' ) {
+				if ( ( $c['type'] ?? '' ) === 'output_text' ) {
 					$content[] = $c['text'] ?? '';
 				}
 			}

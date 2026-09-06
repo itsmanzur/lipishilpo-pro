@@ -71,7 +71,7 @@ graph TD
 ### ৪. ⚙️ অ্যাডমিন কনফিগারেশন ও লাইসেন্স ম্যানেজার (Admin & License Suite)
 * **API Key Management:** পাসওয়ার্ড ফিল্ড ও মাস্কিং সিকিউরিটি সহ এপিআই কি সংরক্ষণ।
 * **Realtime Connection Checker:** সেটিংস পেইজ থেকেই ১-ক্লিকে ওপেনএআই সার্ভার কানেক্টিভিটি টেস্ট করার সুবিধা।
-* **Pro License Verification:** লাইসেন্স কি অ্যাক্টিভেশন ও ওয়ান-ক্লিক অটোমেটিক আপডেট সাপোর্ট।
+* **Pro License Verification:** সেটিংসে লাইসেন্স কী সেভ করলে `lipishilpo_is_pro` আনলক হয় (লোকাল গেট; রিমোট আপডেটার আলাদা)।
 
 ---
 
@@ -81,9 +81,10 @@ graph TD
 
 | মেথড | এন্ডপয়েন্ট | পারমিশন | কাজ |
 | :--- | :--- | :--- | :--- |
-| `GET` | `/wp-json/lipishilpo/v1/analyze` | Logged-in User | AI এপিআই কি ও মডেল কনফিগারেশন স্ট্যাটাস চেক |
-| `POST` | `/wp-json/lipishilpo/v1/analyze` | Logged-in User | প্রুফরিড, চ্যাপ্টার এনালাইসিস এবং হোল-বুক ধারাবাহিকতা পরীক্ষা |
-| `GET` | `/wp-json/lipishilpo/v1/export/status` | Logged-in User | DOCX, PDF, EPUB এক্সপোর্ট মডিউলের প্রস্তুতি স্ট্যাটাস চেক |
+| `GET` | `/wp-json/lipishilpo/v1/analyze` | `edit_posts` + valid license | AI এপিআই কি ও মডেল কনফিগারেশন স্ট্যাটাস চেক |
+| `POST` | `/wp-json/lipishilpo/v1/analyze` | `edit_posts` + valid license + hourly rate limit | প্রুফরিড, চ্যাপ্টার এনালাইসিস এবং হোল-বুক ধারাবাহিকতা পরীক্ষা |
+| `POST` | `/wp-json/lipishilpo/v1/analyze/test` | `manage_options` | OpenAI কানেকশন পিং |
+| `GET` | `/wp-json/lipishilpo/v1/export/status` | `edit_posts` | লাইসেন্স ও ফন্ট-ভিত্তিক DOCX/PDF/EPUB স্ট্যাটাস |
 
 ---
 
@@ -111,9 +112,10 @@ graph TD
 
 ## 🔒 ৫. নিরাপত্তা ও ডেটা প্রটেকশন (Security & Privacy)
 
-1. **WordPress Security Standards:** প্রতিটি এপিআই কলে `wp_verify_nonce` এবং `is_user_logged_in()` ভ্যালিডেশন বাধ্যতামূলক।
+1. **WordPress Security Standards:** REST কুকি অথ + `X-WP-Nonce`, এবং `edit_posts` / `manage_options` ক্যাপাবিলিটি চেক।
 2. **Sanitization & Escaping:** ইনপুট ও আউটপুট তৈরিতে `sanitize_text_field` এবং `wp_json_encode` কঠোরভাবে অনুসরণ করা হয়।
-3. **No External Server Dependency (for Exports):** এক্সপোর্ট ফাইল জেনারেশনে থার্ড পার্টি ক্লাউড সার্ভারের ওপর নির্ভরশীল না হয়ে স্বয়ংক্রিয়ভাবে স্ট্যান্ডার্ড প্রসেসিং বজায় রাখে।
+3. **No External Server Dependency (for Exports):** এক্সপোর্ট ক্লায়েন্ট-সাইড; সার্ভার `/export/status` লাইসেন্স ছাড়া ফরম্যাট আনলক করে না।
+4. **License gate:** খালি লাইসেন্স কী থাকলে Pro ফিচার লক থাকে — শুধু প্লাগিন অ্যাকটিভ হলেই যথেষ্ট নয়।
 
 ---
 
@@ -122,4 +124,5 @@ graph TD
 1. প্রথমে মূল [Lipishilpo](https://github.com/itsmanzur/lipishilpo) ফ্রি প্লাগিন ইনস্টল ও সক্রিয় করুন।
 2. `lipishilpo-pro` প্লাগিন ফোল্ডারটি `/wp-content/plugins/` ডিরেক্টরিতে আপলোড করুন এবং সক্রিয় করুন।
 3. ওয়ার্ডপ্রেস অ্যাডমিনের **Lipishilpo > Settings** এ গিয়ে আপনার **OpenAI API Key** বসান এবং **Test Connection** বাটনে ক্লিক করে কানেক্টিভিটি নিশ্চিত করুন।
-4. ব্যস! এখন লিপিশিল্প এডিটরে ওপেনএআই অ্যাসিস্ট্যান্ট, অডিও প্রুফরিডার এবং পাবলিকেশন এক্সপোর্ট সক্রিয় হয়ে যাবে।
+4. **Pro License Key** সেভ করুন — কী ছাড়া AI ও প্রো এক্সপোর্ট লক থাকবে।
+5. ব্যস! এখন লিপিশিল্প এডিটরে ওপেনএআই অ্যাসিস্ট্যান্ট, অডিও প্রুফরিডার এবং পাবলিকেশন এক্সপোর্ট সক্রিয় হয়ে যাবে।

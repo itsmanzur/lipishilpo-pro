@@ -1,0 +1,13 @@
+<?php
+/**
+ * Lipishilpo Pro uninstall — remove Pro-only options.
+ */
+
+if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
+	exit;
+}
+
+delete_option( 'lipishilpo_openai_key' );
+delete_option( 'lipishilpo_openai_model' );
+delete_option( 'lipishilpo_license_key' );
+delete_option( 'lipishilpo_license_status' );
