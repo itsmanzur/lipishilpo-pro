@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import {
   ChevronLeft,
   ChevronRight,
@@ -7,19 +7,24 @@ import {
   ZoomOut,
   BookOpen,
   FileText,
-  Layers,
   Palette,
+  Bookmark,
+  User,
+  Info,
 } from 'lucide-react';
 import type { Project, Chapter } from '../api';
 import {
   type BookSettings,
   CALLOUT_THEMES,
+  calculateSpineMm,
+  estimatePageCount,
   sheetExtraMm,
   trimSizeMm,
 } from '../lib/book-layout';
 import { parseChapterContent, toBengaliNumerals, type BookBlock } from '../lib/book-parser';
 
-export type PreviewMode = 'spread' | 'single' | 'continuous' | 'cover';
+export type PreviewMode = 'spread' | 'single' | 'cover';
+export type PreviewSection = 'front' | 'chapter' | 'back';
 
 export function BookPreview({
   project,
@@ -35,12 +40,13 @@ export function BookPreview({
   isExpanded?: boolean;
 }) {
   const [currentChapterIdx, setCurrentChapterIdx] = useState(0);
+  const [currentSection, setCurrentSection] = useState<PreviewSection>('chapter');
   const [previewMode, setPreviewMode] = useState<PreviewMode>('spread');
   const [zoomLevel, setZoomLevel] = useState<number>(isExpanded ? 1.0 : 0.65);
 
   const trim = trimSizeMm(settings);
   const extra = sheetExtraMm(settings);
-  const baseScale = isExpanded ? 3.7 : 1.6;
+  const baseScale = isExpanded ? 3.6 : 1.5;
   const currentScale = baseScale * zoomLevel;
 
   const pageW = (trim.w + extra * 2) * currentScale;
@@ -64,12 +70,16 @@ export function BookPreview({
   const currentChapter = chapters[currentChapterIdx] || chapters[0];
   const blocks = parseChapterContent(currentChapter.text || '');
 
+  const totalChars = project.chapters?.reduce((sum, c) => sum + (c.text?.length || 0), 0) || 5000;
+  const estimatedPages = estimatePageCount(totalChars, settings);
+  const calculatedSpine = calculateSpineMm(estimatedPages, settings.paperGsm);
+
   const formatPageNum = (n: number) =>
     settings.numberFormat === 'bn' ? toBengaliNumerals(n) : String(n);
 
   const calloutStyle = CALLOUT_THEMES[settings.calloutTheme] || CALLOUT_THEMES.emerald;
 
-  // Render a block inside page
+  // Render parsed block inside page
   const renderBlock = (block: BookBlock, bIdx: number) => {
     switch (block.type) {
       case 'heading':
@@ -208,11 +218,46 @@ export function BookPreview({
               letterSpacing: '4px',
             }}
           >
-            ❦ ❦ ❦
+            ❖ — ❖ — ❖
           </div>
         );
       case 'paragraph':
-      default:
+      default: {
+        const isFirst = bIdx === 0;
+        if (isFirst && settings.dropCap && block.text.length > 2) {
+          const firstChar = block.text.slice(0, 1);
+          const restText = block.text.slice(1);
+          return (
+            <p
+              key={bIdx}
+              style={{
+                textAlign: settings.textAlign,
+                fontSize: `${Math.max(10, settings.fontSize * currentScale)}px`,
+                lineHeight: settings.lineHeight,
+                color: '#1e293b',
+                marginTop: 0,
+                marginBottom: `${6 * currentScale}px`,
+              }}
+            >
+              <span
+                style={{
+                  float: 'left',
+                  fontSize: `${settings.fontSize * currentScale * 3.2}px`,
+                  lineHeight: '0.8',
+                  paddingTop: '4px',
+                  paddingRight: '8px',
+                  paddingBottom: '2px',
+                  fontFamily: settings.fontFamily,
+                  color: settings.chapterHeadingColor,
+                  fontWeight: 800,
+                }}
+              >
+                {firstChar}
+              </span>
+              {restText}
+            </p>
+          );
+        }
         return (
           <p
             key={bIdx}
@@ -229,6 +274,7 @@ export function BookPreview({
             {block.text}
           </p>
         );
+      }
     }
   };
 
@@ -240,7 +286,9 @@ export function BookPreview({
           <button
             type="button"
             className={`toolbar-btn ${previewMode === 'spread' ? 'active' : ''}`}
-            onClick={() => setPreviewMode('spread')}
+            onClick={() => {
+              setPreviewMode('spread');
+            }}
             title={lang === 'bn' ? 'দুই পাতার স্প্রেড ভিউ' : '2-Page Spread View'}
           >
             <BookOpen size={14} />
@@ -249,7 +297,9 @@ export function BookPreview({
           <button
             type="button"
             className={`toolbar-btn ${previewMode === 'single' ? 'active' : ''}`}
-            onClick={() => setPreviewMode('single')}
+            onClick={() => {
+              setPreviewMode('single');
+            }}
             title={lang === 'bn' ? 'একক পাতা ভিউ' : 'Single Page View'}
           >
             <FileText size={14} />
@@ -258,7 +308,9 @@ export function BookPreview({
           <button
             type="button"
             className={`toolbar-btn ${previewMode === 'cover' ? 'active' : ''}`}
-            onClick={() => setPreviewMode('cover')}
+            onClick={() => {
+              setPreviewMode('cover');
+            }}
             title={lang === 'bn' ? 'বইয়ের প্রচ্ছদ ভিউ' : 'Cover View'}
           >
             <Palette size={14} />
@@ -266,8 +318,40 @@ export function BookPreview({
           </button>
         </div>
 
+        {/* Section Pill Switcher (Front Matter vs Chapter vs Author Bio) */}
+        {isExpanded && previewMode !== 'cover' && (
+          <div className="section-pill-switcher">
+            <button
+              type="button"
+              className={`section-pill-btn ${currentSection === 'front' ? 'active' : ''}`}
+              onClick={() => setCurrentSection('front')}
+            >
+              <Bookmark size={13} />
+              <span>{lang === 'bn' ? 'শুরুর পাতা' : 'Front Matter'}</span>
+            </button>
+
+            <button
+              type="button"
+              className={`section-pill-btn ${currentSection === 'chapter' ? 'active' : ''}`}
+              onClick={() => setCurrentSection('chapter')}
+            >
+              <FileText size={13} />
+              <span>{lang === 'bn' ? 'অধ্যায় মূলপাঠ' : 'Chapters'}</span>
+            </button>
+
+            <button
+              type="button"
+              className={`section-pill-btn ${currentSection === 'back' ? 'active' : ''}`}
+              onClick={() => setCurrentSection('back')}
+            >
+              <User size={13} />
+              <span>{lang === 'bn' ? 'লেখক পরিচিতি' : 'Back Matter'}</span>
+            </button>
+          </div>
+        )}
+
         {/* Chapter Switcher (in expanded mode) */}
-        {isExpanded && previewMode !== 'cover' && chapters.length > 1 && (
+        {isExpanded && previewMode !== 'cover' && currentSection === 'chapter' && chapters.length > 1 && (
           <div className="chapter-nav-group">
             <button
               type="button"
@@ -338,7 +422,7 @@ export function BookPreview({
         </div>
       </div>
 
-      {/* Main Preview Stage */}
+      {/* Main Preview Stage Viewport */}
       <div className="book-stage-viewport">
         {/* 1. COVER VIEW */}
         {previewMode === 'cover' && (
@@ -368,6 +452,7 @@ export function BookPreview({
               <span>
                 {trim.w} × {trim.h} mm ({settings.pageSize})
               </span>
+              <span> · আনুমানিক স্পাইন: {calculatedSpine} mm ({settings.paperGsm} GSM)</span>
               {settings.bleedMm > 0 && <span> · ব্লিড: {settings.bleedMm} mm</span>}
             </div>
           </div>
@@ -377,7 +462,7 @@ export function BookPreview({
         {previewMode === 'spread' && (
           <div className="book-spread-stage">
             <div className="book-spread-booklet" style={{ fontFamily: settings.fontFamily }}>
-              {/* Verso Page (Left page - Even) */}
+              {/* VERSO PAGE (LEFT) */}
               <div
                 className="book-page-sheet verso"
                 style={{
@@ -391,40 +476,74 @@ export function BookPreview({
                   <span>{settings.runningHeader === 'author' ? settings.author : project.title}</span>
                 </div>
 
-                {/* Verso Page Content (Front matter / Previous chapter summary / Imprint) */}
+                {/* Verso Content depends on currentSection */}
                 <div className="page-body-content">
-                  <div className="verso-imprint-card">
-                    <h3 className="verso-title">{project.title}</h3>
-                    {settings.author && <p className="verso-author">{settings.author}</p>}
-                    <div className="verso-divider" />
-                    <p className="verso-imprint-line">
-                      {settings.copyrightNote || `© ${settings.year || new Date().getFullYear()} ${settings.author || project.title}`}
-                    </p>
-                    {settings.publisher && (
+                  {currentSection === 'front' ? (
+                    /* Front Matter: Half-Title & Imprint */
+                    <div className="verso-imprint-card">
+                      <h3 className="verso-title">{project.title}</h3>
+                      {settings.author && <p className="verso-author">{settings.author}</p>}
+                      <div className="verso-divider" />
                       <p className="verso-imprint-line">
-                        {lang === 'bn' ? 'প্রকাশক: ' : 'Publisher: '}
-                        {settings.publisher}
+                        {settings.copyrightNote || `© ${settings.year || new Date().getFullYear()} ${settings.author || project.title}`}
                       </p>
-                    )}
-                    {settings.isbn && <p className="verso-imprint-line">ISBN {settings.isbn}</p>}
-                    {settings.dedication && (
-                      <div className="verso-dedication-box">
-                        <em>"{settings.dedication}"</em>
-                      </div>
-                    )}
-                  </div>
+                      {settings.publisher && (
+                        <p className="verso-imprint-line">
+                          {lang === 'bn' ? 'প্রকাশক: ' : 'Publisher: '}
+                          {settings.publisher}
+                        </p>
+                      )}
+                      {settings.coverDesigner && (
+                        <p className="verso-imprint-line">
+                          {lang === 'bn' ? 'প্রচ্ছদ: ' : 'Cover: '}
+                          {settings.coverDesigner}
+                        </p>
+                      )}
+                      {settings.isbn && <p className="verso-imprint-line">ISBN {settings.isbn}</p>}
+                      {settings.price && (
+                        <p className="verso-imprint-line">
+                          {lang === 'bn' ? 'মূল্য: ৳ ' : 'Price: '}
+                          {settings.price}
+                        </p>
+                      )}
+                      {settings.dedication && (
+                        <div className="verso-dedication-box">
+                          <em>"{settings.dedication}"</em>
+                        </div>
+                      )}
+                    </div>
+                  ) : currentSection === 'back' ? (
+                    /* Back Matter Verso: Other Books */
+                    <div className="back-matter-box">
+                      <h4 className="back-section-heading">{lang === 'bn' ? 'লেখকের অন্যান্য বই' : 'Other Books'}</h4>
+                      <p className="back-text-content">
+                        {settings.otherBooks || (lang === 'bn' ? 'লেখকের প্রকাশিত অন্যান্য গ্রন্থসমূহ শীঘ্রই আসছে।' : 'Other books by author coming soon.')}
+                      </p>
+                    </div>
+                  ) : (
+                    /* Chapter Verso (Previous Chapter Summary / Continuation) */
+                    <div className="verso-imprint-card">
+                      <h3 className="verso-title">{project.title}</h3>
+                      {settings.author && <p className="verso-author">{settings.author}</p>}
+                      <div className="verso-divider" />
+                      <p className="verso-imprint-line">
+                        {settings.copyrightNote || `© ${settings.year || new Date().getFullYear()} ${settings.author || project.title}`}
+                      </p>
+                      {settings.isbn && <p className="verso-imprint-line">ISBN {settings.isbn}</p>}
+                    </div>
+                  )}
                 </div>
 
-                {/* Running Footer / Page number */}
+                {/* Running Footer */}
                 <div className="book-running-footer left">
-                  <span>{formatPageNum(currentChapterIdx * 2 + 2)}</span>
+                  <span>{formatPageNum(currentSection === 'front' ? 2 : currentSection === 'back' ? estimatedPages - 1 : currentChapterIdx * 2 + 2)}</span>
                 </div>
               </div>
 
               {/* Book Spine Crease Shadow */}
               <div className="book-spine-crease" />
 
-              {/* Recto Page (Right page - Odd - Chapter Opening) */}
+              {/* RECTO PAGE (RIGHT) */}
               <div
                 className="book-page-sheet recto"
                 style={{
@@ -435,34 +554,105 @@ export function BookPreview({
               >
                 {/* Running Header */}
                 <div className="book-running-header right">
-                  <span>{currentChapter.title || (lang === 'bn' ? 'অধ্যায় ১' : 'Chapter 1')}</span>
+                  <span>
+                    {currentSection === 'front'
+                      ? settings.prefaceTitle || 'ভূমিকা'
+                      : currentSection === 'back'
+                        ? 'লেখক পরিচিতি'
+                        : currentChapter.title || 'অধ্যায় ১'}
+                  </span>
                 </div>
 
-                {/* Chapter Title Banner (Styled as in user image) */}
-                <div className="chapter-opening-banner">
-                  <h2
-                    className="chapter-main-heading"
-                    style={{
-                      color: settings.chapterHeadingColor,
-                      fontSize: `${Math.max(15, settings.fontSize * currentScale * 1.55)}px`,
-                      fontWeight: 800,
-                      lineHeight: 1.35,
-                      marginBottom: `${14 * currentScale}px`,
-                      marginTop: `${10 * currentScale}px`,
-                    }}
-                  >
-                    {currentChapter.title || (lang === 'bn' ? 'অধ্যায় ১: সাক্ষাৎকার ও প্রথম চাকরির প্রস্তুতি' : 'Chapter 1')}
-                  </h2>
-                </div>
-
-                {/* Body Content Blocks */}
+                {/* Recto Content depends on currentSection */}
                 <div className="page-body-content">
-                  {blocks.slice(0, isExpanded ? 16 : 8).map((b, idx) => renderBlock(b, idx))}
+                  {currentSection === 'front' ? (
+                    /* Front Matter Recto: Preface */
+                    <div className="recto-preface-container">
+                      <h2
+                        className="chapter-main-heading"
+                        style={{
+                          color: settings.chapterHeadingColor,
+                          fontSize: `${Math.max(15, settings.fontSize * currentScale * 1.5)}px`,
+                          fontWeight: 800,
+                          marginBottom: `${14 * currentScale}px`,
+                        }}
+                      >
+                        {settings.prefaceTitle || (lang === 'bn' ? 'ভূমিকা' : 'Preface')}
+                      </h2>
+                      <p
+                        style={{
+                          textIndent: `${settings.firstLineIndentMm * currentScale}px`,
+                          textAlign: settings.textAlign,
+                          fontSize: `${Math.max(10, settings.fontSize * currentScale)}px`,
+                          lineHeight: settings.lineHeight,
+                          color: '#1e293b',
+                          whiteSpace: 'pre-line',
+                        }}
+                      >
+                        {settings.prefaceText ||
+                          (lang === 'bn'
+                            ? 'বইয়ের ভূমিকা বা লেখকের কথা এখানে সন্নিবেশিত হবে। সেটিংসে গিয়ে ভূমিকা যুক্ত করতে পারেন।'
+                            : 'Author preface or foreword text will appear here.')}
+                      </p>
+                    </div>
+                  ) : currentSection === 'back' ? (
+                    /* Back Matter Recto: Author Bio */
+                    <div className="recto-author-bio-container">
+                      <h2
+                        className="chapter-main-heading"
+                        style={{
+                          color: settings.chapterHeadingColor,
+                          fontSize: `${Math.max(15, settings.fontSize * currentScale * 1.5)}px`,
+                          fontWeight: 800,
+                          marginBottom: `${14 * currentScale}px`,
+                        }}
+                      >
+                        {lang === 'bn' ? 'লেখক পরিচিতি' : 'About the Author'}
+                      </h2>
+                      <div className="author-bio-card">
+                        <h4 style={{ margin: '0 0 6px', color: '#1e293b', fontSize: `${Math.max(11, settings.fontSize * currentScale * 1.1)}px` }}>
+                          {settings.author || (lang === 'bn' ? 'লেখকের নাম' : 'Author Name')}
+                        </h4>
+                        <p
+                          style={{
+                            fontSize: `${Math.max(10, settings.fontSize * currentScale * 0.95)}px`,
+                            lineHeight: settings.lineHeight,
+                            color: '#334155',
+                            whiteSpace: 'pre-line',
+                          }}
+                        >
+                          {settings.authorBio || (lang === 'bn' ? 'লেখকের সংক্ষিপ্ত আত্মজীবনী ও সাহিত্যকর্মের বিবরণ।' : 'Author biographical notes.')}
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    /* Main Chapter Opening Page */
+                    <>
+                      <div className="chapter-opening-banner">
+                        <h2
+                          className="chapter-main-heading"
+                          style={{
+                            color: settings.chapterHeadingColor,
+                            fontSize: `${Math.max(15, settings.fontSize * currentScale * 1.55)}px`,
+                            fontWeight: 800,
+                            lineHeight: 1.35,
+                            marginBottom: `${14 * currentScale}px`,
+                            marginTop: `${10 * currentScale}px`,
+                          }}
+                        >
+                          {currentChapter.title || (lang === 'bn' ? 'অধ্যায় ১: সাক্ষাৎকার ও প্রথম চাকরির প্রস্তুতি' : 'Chapter 1')}
+                        </h2>
+                      </div>
+                      <div className="page-body-content">
+                        {blocks.slice(0, isExpanded ? 16 : 8).map((b, idx) => renderBlock(b, idx))}
+                      </div>
+                    </>
+                  )}
                 </div>
 
-                {/* Running Footer / Page number */}
+                {/* Running Footer */}
                 <div className="book-running-footer right">
-                  <span>{formatPageNum(currentChapterIdx * 2 + 3)}</span>
+                  <span>{formatPageNum(currentSection === 'front' ? 3 : currentSection === 'back' ? estimatedPages : currentChapterIdx * 2 + 3)}</span>
                 </div>
               </div>
             </div>
@@ -481,12 +671,10 @@ export function BookPreview({
                 fontFamily: settings.fontFamily,
               }}
             >
-              {/* Running Header */}
               <div className="book-running-header center">
                 <span>{currentChapter.title || project.title}</span>
               </div>
 
-              {/* Chapter Title Banner */}
               <div className="chapter-opening-banner">
                 <h2
                   className="chapter-main-heading"
@@ -503,12 +691,10 @@ export function BookPreview({
                 </h2>
               </div>
 
-              {/* Body Content Blocks */}
               <div className="page-body-content">
                 {blocks.map((b, idx) => renderBlock(b, idx))}
               </div>
 
-              {/* Running Footer */}
               <div className="book-running-footer center">
                 <span>{formatPageNum(currentChapterIdx + 1)}</span>
               </div>
@@ -517,14 +703,14 @@ export function BookPreview({
         )}
       </div>
 
-      {/* Footer Info & Metadata */}
+      {/* Footer Info & Metadata Bar */}
       <div className="book-preview-footer-meta">
         <span>
           📏 {trim.w} × {trim.h} mm ({settings.pageSize})
         </span>
         <span> · 🔤 {settings.fontFamily}</span>
-        <span> · 🖋️ {settings.fontSize} pt</span>
-        <span> · 🎨 {CALLOUT_THEMES[settings.calloutTheme]?.label || 'Emerald'}</span>
+        <span> · 📄 আনুমানিক {estimatedPages} পৃষ্ঠা</span>
+        <span> · 📐 স্পাইন: {calculatedSpine} mm</span>
       </div>
     </div>
   );
