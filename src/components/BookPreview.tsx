@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import {
   ChevronLeft,
   ChevronRight,
@@ -79,6 +79,9 @@ export function BookPreview({
 
   const calloutStyle = CALLOUT_THEMES[settings.calloutTheme] || CALLOUT_THEMES.emerald;
 
+  // Helper to convert typography pt to scaled screen pixels (1 pt = 0.3528 mm)
+  const ptToPx = (pt: number, minPx = 8.5) => Math.max(minPx, pt * 0.3528 * currentScale);
+
   // Render parsed block inside page
   const renderBlock = (block: BookBlock, bIdx: number) => {
     switch (block.type) {
@@ -89,10 +92,10 @@ export function BookPreview({
             className="book-block-heading"
             style={{
               color: settings.subheadingColor,
-              fontSize: `${Math.max(12, settings.fontSize * currentScale * (block.level === 1 ? 1.4 : block.level === 2 ? 1.2 : 1.1))}px`,
+              fontSize: `${ptToPx(settings.fontSize * (block.level === 1 ? 1.45 : block.level === 2 ? 1.25 : 1.12), 11)}px`,
               fontWeight: 700,
-              marginTop: `${12 * currentScale}px`,
-              marginBottom: `${6 * currentScale}px`,
+              marginTop: `${10 * currentScale}px`,
+              marginBottom: `${5 * currentScale}px`,
             }}
           >
             {block.text}
@@ -110,7 +113,7 @@ export function BookPreview({
               marginBottom: `${12 * currentScale}px`,
               fontStyle: 'italic',
               color: '#334155',
-              fontSize: `${Math.max(10, settings.fontSize * currentScale * 0.95)}px`,
+              fontSize: `${ptToPx(settings.fontSize * 0.95, 9)}px`,
               lineHeight: settings.lineHeight,
             }}
           >
@@ -122,6 +125,7 @@ export function BookPreview({
                   textAlign: 'right',
                   color: '#64748b',
                   marginTop: `${4 * currentScale}px`,
+                  fontSize: `${ptToPx(settings.fontSize * 0.8, 8)}px`,
                 }}
               >
                 — {block.source}
@@ -138,19 +142,19 @@ export function BookPreview({
               backgroundColor: calloutStyle.bg,
               border: `1px solid ${calloutStyle.border}`,
               borderRadius: `${4 * currentScale}px`,
-              padding: `${10 * currentScale}px ${12 * currentScale}px`,
-              marginTop: `${12 * currentScale}px`,
-              marginBottom: `${14 * currentScale}px`,
+              padding: `${8 * currentScale}px ${10 * currentScale}px`,
+              marginTop: `${10 * currentScale}px`,
+              marginBottom: `${12 * currentScale}px`,
             }}
           >
             <div
               style={{
                 color: calloutStyle.title,
                 fontWeight: 700,
-                fontSize: `${Math.max(11, settings.fontSize * currentScale * 1.05)}px`,
-                marginBottom: `${6 * currentScale}px`,
+                fontSize: `${ptToPx(settings.fontSize * 1.05, 9.5)}px`,
+                marginBottom: `${4 * currentScale}px`,
                 borderBottom: `1px solid ${calloutStyle.border}`,
-                paddingBottom: `${4 * currentScale}px`,
+                paddingBottom: `${3 * currentScale}px`,
               }}
             >
               {block.title}
@@ -158,7 +162,7 @@ export function BookPreview({
             <div
               style={{
                 color: '#1e293b',
-                fontSize: `${Math.max(9.5, settings.fontSize * currentScale * 0.92)}px`,
+                fontSize: `${ptToPx(settings.fontSize * 0.92, 8.5)}px`,
                 lineHeight: settings.lineHeight,
                 textAlign: settings.textAlign,
                 whiteSpace: 'pre-line',
@@ -175,12 +179,12 @@ export function BookPreview({
             className="book-block-citation"
             style={{
               color: '#64748b',
-              fontSize: `${Math.max(8.5, settings.fontSize * currentScale * 0.82)}px`,
+              fontSize: `${ptToPx(settings.fontSize * 0.82, 8)}px`,
               lineHeight: 1.4,
               fontStyle: 'italic',
-              marginTop: `${12 * currentScale}px`,
-              marginBottom: `${10 * currentScale}px`,
-              paddingTop: `${6 * currentScale}px`,
+              marginTop: `${10 * currentScale}px`,
+              marginBottom: `${8 * currentScale}px`,
+              paddingTop: `${5 * currentScale}px`,
               borderTop: '1px dashed #cbd5e1',
             }}
           >
@@ -193,15 +197,15 @@ export function BookPreview({
             key={bIdx}
             style={{
               paddingLeft: `${18 * currentScale}px`,
-              marginTop: `${8 * currentScale}px`,
-              marginBottom: `${10 * currentScale}px`,
-              fontSize: `${Math.max(10, settings.fontSize * currentScale * 0.95)}px`,
+              marginTop: `${6 * currentScale}px`,
+              marginBottom: `${8 * currentScale}px`,
+              fontSize: `${ptToPx(settings.fontSize * 0.95, 8.5)}px`,
               lineHeight: settings.lineHeight,
               color: '#1e293b',
             }}
           >
             {block.items.map((it, iIdx) => (
-              <li key={iIdx} style={{ marginBottom: `${4 * currentScale}px` }}>
+              <li key={iIdx} style={{ marginBottom: `${3 * currentScale}px` }}>
                 {it}
               </li>
             ))}
@@ -214,8 +218,9 @@ export function BookPreview({
             style={{
               textAlign: 'center',
               color: '#94a3b8',
-              margin: `${12 * currentScale}px 0`,
+              margin: `${10 * currentScale}px 0`,
               letterSpacing: '4px',
+              fontSize: `${ptToPx(settings.fontSize * 0.9, 9)}px`,
             }}
           >
             ❖ — ❖ — ❖
@@ -232,7 +237,7 @@ export function BookPreview({
               key={bIdx}
               style={{
                 textAlign: settings.textAlign,
-                fontSize: `${Math.max(10, settings.fontSize * currentScale)}px`,
+                fontSize: `${ptToPx(settings.fontSize)}px`,
                 lineHeight: settings.lineHeight,
                 color: '#1e293b',
                 marginTop: 0,
@@ -242,10 +247,10 @@ export function BookPreview({
               <span
                 style={{
                   float: 'left',
-                  fontSize: `${settings.fontSize * currentScale * 3.2}px`,
-                  lineHeight: '0.8',
-                  paddingTop: '4px',
-                  paddingRight: '8px',
+                  fontSize: `${ptToPx(settings.fontSize * 3.1, 24)}px`,
+                  lineHeight: '0.85',
+                  paddingTop: '2px',
+                  paddingRight: `${6 * currentScale}px`,
                   paddingBottom: '2px',
                   fontFamily: settings.fontFamily,
                   color: settings.chapterHeadingColor,
@@ -264,7 +269,7 @@ export function BookPreview({
             style={{
               textIndent: `${settings.firstLineIndentMm * currentScale}px`,
               textAlign: settings.textAlign,
-              fontSize: `${Math.max(10, settings.fontSize * currentScale)}px`,
+              fontSize: `${ptToPx(settings.fontSize)}px`,
               lineHeight: settings.lineHeight,
               color: '#1e293b',
               marginTop: 0,
@@ -572,9 +577,9 @@ export function BookPreview({
                         className="chapter-main-heading"
                         style={{
                           color: settings.chapterHeadingColor,
-                          fontSize: `${Math.max(15, settings.fontSize * currentScale * 1.5)}px`,
+                          fontSize: `${ptToPx(settings.fontSize * 1.5, 13)}px`,
                           fontWeight: 800,
-                          marginBottom: `${14 * currentScale}px`,
+                          marginBottom: `${10 * currentScale}px`,
                         }}
                       >
                         {settings.prefaceTitle || (lang === 'bn' ? 'ভূমিকা' : 'Preface')}
@@ -583,7 +588,7 @@ export function BookPreview({
                         style={{
                           textIndent: `${settings.firstLineIndentMm * currentScale}px`,
                           textAlign: settings.textAlign,
-                          fontSize: `${Math.max(10, settings.fontSize * currentScale)}px`,
+                          fontSize: `${ptToPx(settings.fontSize)}px`,
                           lineHeight: settings.lineHeight,
                           color: '#1e293b',
                           whiteSpace: 'pre-line',
@@ -602,20 +607,20 @@ export function BookPreview({
                         className="chapter-main-heading"
                         style={{
                           color: settings.chapterHeadingColor,
-                          fontSize: `${Math.max(15, settings.fontSize * currentScale * 1.5)}px`,
+                          fontSize: `${ptToPx(settings.fontSize * 1.5, 13)}px`,
                           fontWeight: 800,
-                          marginBottom: `${14 * currentScale}px`,
+                          marginBottom: `${10 * currentScale}px`,
                         }}
                       >
                         {lang === 'bn' ? 'লেখক পরিচিতি' : 'About the Author'}
                       </h2>
                       <div className="author-bio-card">
-                        <h4 style={{ margin: '0 0 6px', color: '#1e293b', fontSize: `${Math.max(11, settings.fontSize * currentScale * 1.1)}px` }}>
+                        <h4 style={{ margin: '0 0 6px', color: '#1e293b', fontSize: `${ptToPx(settings.fontSize * 1.1, 10)}px` }}>
                           {settings.author || (lang === 'bn' ? 'লেখকের নাম' : 'Author Name')}
                         </h4>
                         <p
                           style={{
-                            fontSize: `${Math.max(10, settings.fontSize * currentScale * 0.95)}px`,
+                            fontSize: `${ptToPx(settings.fontSize * 0.95, 9)}px`,
                             lineHeight: settings.lineHeight,
                             color: '#334155',
                             whiteSpace: 'pre-line',
@@ -633,18 +638,18 @@ export function BookPreview({
                           className="chapter-main-heading"
                           style={{
                             color: settings.chapterHeadingColor,
-                            fontSize: `${Math.max(15, settings.fontSize * currentScale * 1.55)}px`,
+                            fontSize: `${ptToPx(settings.fontSize * 1.55, 14)}px`,
                             fontWeight: 800,
                             lineHeight: 1.35,
-                            marginBottom: `${14 * currentScale}px`,
-                            marginTop: `${10 * currentScale}px`,
+                            marginBottom: `${12 * currentScale}px`,
+                            marginTop: `${8 * currentScale}px`,
                           }}
                         >
                           {currentChapter.title || (lang === 'bn' ? 'অধ্যায় ১: সাক্ষাৎকার ও প্রথম চাকরির প্রস্তুতি' : 'Chapter 1')}
                         </h2>
                       </div>
                       <div className="page-body-content">
-                        {blocks.slice(0, isExpanded ? 16 : 8).map((b, idx) => renderBlock(b, idx))}
+                        {blocks.slice(0, isExpanded ? 24 : 12).map((b, idx) => renderBlock(b, idx))}
                       </div>
                     </>
                   )}
@@ -680,10 +685,10 @@ export function BookPreview({
                   className="chapter-main-heading"
                   style={{
                     color: settings.chapterHeadingColor,
-                    fontSize: `${Math.max(15, settings.fontSize * currentScale * 1.5)}px`,
+                    fontSize: `${ptToPx(settings.fontSize * 1.5, 14)}px`,
                     fontWeight: 800,
                     lineHeight: 1.35,
-                    marginBottom: `${14 * currentScale}px`,
+                    marginBottom: `${12 * currentScale}px`,
                     marginTop: `${8 * currentScale}px`,
                   }}
                 >
