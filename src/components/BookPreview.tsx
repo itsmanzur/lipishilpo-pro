@@ -243,8 +243,8 @@ export function BookPreview({
             onClick={() => setPreviewMode('spread')}
             title={lang === 'bn' ? 'দুই পাতার স্প্রেড ভিউ' : '2-Page Spread View'}
           >
-            <BookOpen size={15} />
-            <span>{lang === 'bn' ? 'স্প্রেড ভিউ' : 'Spread'}</span>
+            <BookOpen size={14} />
+            <span>{isExpanded ? (lang === 'bn' ? 'স্প্রেড ভিউ' : 'Spread') : (lang === 'bn' ? 'স্প্রেড' : 'Spread')}</span>
           </button>
           <button
             type="button"
@@ -252,8 +252,8 @@ export function BookPreview({
             onClick={() => setPreviewMode('single')}
             title={lang === 'bn' ? 'একক পাতা ভিউ' : 'Single Page View'}
           >
-            <FileText size={15} />
-            <span>{lang === 'bn' ? 'একক পাতা' : 'Single'}</span>
+            <FileText size={14} />
+            <span>{isExpanded ? (lang === 'bn' ? 'একক পাতা' : 'Single') : (lang === 'bn' ? '১ পাতা' : 'Single')}</span>
           </button>
           <button
             type="button"
@@ -261,13 +261,13 @@ export function BookPreview({
             onClick={() => setPreviewMode('cover')}
             title={lang === 'bn' ? 'বইয়ের প্রচ্ছদ ভিউ' : 'Cover View'}
           >
-            <Palette size={15} />
+            <Palette size={14} />
             <span>{lang === 'bn' ? 'প্রচ্ছদ' : 'Cover'}</span>
           </button>
         </div>
 
-        {/* Chapter Switcher */}
-        {previewMode !== 'cover' && chapters.length > 1 && (
+        {/* Chapter Switcher (in expanded mode) */}
+        {isExpanded && previewMode !== 'cover' && chapters.length > 1 && (
           <div className="chapter-nav-group">
             <button
               type="button"
@@ -330,10 +330,9 @@ export function BookPreview({
               type="button"
               className="expand-btn"
               onClick={onExpand}
-              title={lang === 'bn' ? 'বুক গেট-আপ স্টুডিও ফুলস্ক্রিন ভিউ' : 'Open Fullscreen Book Studio'}
+              title={lang === 'bn' ? 'ফুলস্ক্রিন বুক স্টুডিও খুলুন' : 'Open Fullscreen Book Studio'}
             >
-              <Maximize2 size={14} />
-              <span>{lang === 'bn' ? 'বুক স্টুডিও খুলুন' : 'Open Studio'}</span>
+              <Maximize2 size={13} />
             </button>
           )}
         </div>
