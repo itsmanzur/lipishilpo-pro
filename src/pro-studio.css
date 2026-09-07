@@ -598,6 +598,19 @@
   border-color: #0f766e;
 }
 
+.book-preview-sub-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 5px 10px;
+  background: #f1f5f9;
+  border-bottom: 1px solid #e2e8f0;
+  flex-shrink: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
 /* Section Pill Switcher (Front Matter / TOC / Chapters / Back Matter) */
 .section-pill-switcher {
   display: flex;
@@ -1399,10 +1412,12 @@
   background: #e2e8f0;
   padding: 3px;
   border-radius: 6px;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .device-pill-btn {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 4px;
   padding: 4px 8px;
@@ -1414,6 +1429,9 @@
   border-radius: 4px;
   cursor: pointer;
   transition: all 0.15s ease;
+  white-space: nowrap;
+  word-break: keep-all;
+  flex-shrink: 0;
 }
 
 .device-pill-btn:hover {

@@ -671,7 +671,7 @@ export function BookPreview({
             title={lang === 'bn' ? 'দুই পাতার স্প্রেড ভিউ' : '2-Page Spread View'}
           >
             <BookOpen size={14} />
-            <span>{isExpanded ? (lang === 'bn' ? 'স্প্রেড' : 'Spread') : 'স্প্রেড'}</span>
+            <span>{lang === 'bn' ? 'স্প্রেড' : 'Spread'}</span>
           </button>
 
           <button
@@ -681,7 +681,7 @@ export function BookPreview({
             title={lang === 'bn' ? 'একক পাতা ভিউ' : 'Single Page View'}
           >
             <FileText size={14} />
-            <span>{isExpanded ? (lang === 'bn' ? '১ পাতা' : 'Single') : '১ পাতা'}</span>
+            <span>{lang === 'bn' ? '১ পাতা' : 'Single'}</span>
           </button>
 
           <button
@@ -713,10 +713,7 @@ export function BookPreview({
             <Box size={14} />
             <span>{lang === 'bn' ? '৩ডি মকআপ' : '3D'}</span>
           </button>
-        </div>
 
-        {/* Safe Zone Toggle Button */}
-        <div className="toolbar-group">
           <button
             type="button"
             className={`toolbar-btn ${showSafeZone ? 'active' : ''}`}
@@ -771,8 +768,46 @@ export function BookPreview({
           </div>
         )}
 
-        {/* Section Pill Switcher (Front Matter vs TOC vs Chapter vs Author Bio) */}
-        {isExpanded && !['cover', 'wrap', '3d'].includes(previewMode) && (
+        {/* Zoom & Expand Controls */}
+        <div className="toolbar-group right">
+          {isExpanded && (
+            <>
+              <button
+                type="button"
+                className="icon-btn"
+                onClick={() => setZoomLevel((z) => Math.max(0.6, z - 0.15))}
+                title={lang === 'bn' ? 'জুম আউট' : 'Zoom Out'}
+              >
+                <ZoomOut size={15} />
+              </button>
+              <span className="zoom-label">{Math.round(zoomLevel * 100)}%</span>
+              <button
+                type="button"
+                className="icon-btn"
+                onClick={() => setZoomLevel((z) => Math.min(1.6, z + 0.15))}
+                title={lang === 'bn' ? 'জুম ইন' : 'Zoom In'}
+              >
+                <ZoomIn size={15} />
+              </button>
+            </>
+          )}
+
+          {!isExpanded && onExpand && (
+            <button
+              type="button"
+              className="expand-btn"
+              onClick={onExpand}
+              title={lang === 'bn' ? 'ফুলস্ক্রিন বুক স্টুডিও খুলুন' : 'Open Fullscreen Book Studio'}
+            >
+              <Maximize2 size={13} />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Sub Toolbar for Internal Page Navigation */}
+      {isExpanded && !['cover', 'wrap', '3d'].includes(previewMode) && (
+        <div className="book-preview-sub-toolbar">
           <div className="section-pill-switcher">
             <button
               type="button"
@@ -810,79 +845,42 @@ export function BookPreview({
               <span>{lang === 'bn' ? 'পরিশিষ্ট' : 'Back Matter'}</span>
             </button>
           </div>
-        )}
 
-        {/* Chapter Switcher (in expanded mode) */}
-        {isExpanded && !['cover', 'wrap', '3d'].includes(previewMode) && currentSection === 'chapter' && chapters.length > 1 && (
-          <div className="chapter-nav-group">
-            <button
-              type="button"
-              className="icon-btn"
-              disabled={currentChapterIdx === 0}
-              onClick={() => setCurrentChapterIdx((c) => Math.max(0, c - 1))}
-              title={lang === 'bn' ? 'পূর্ববর্তী অধ্যায়' : 'Previous Chapter'}
-            >
-              <ChevronLeft size={16} />
-            </button>
-            <select
-              value={currentChapterIdx}
-              onChange={(e) => setCurrentChapterIdx(Number(e.target.value))}
-              className="chapter-select"
-            >
-              {chapters.map((c, idx) => (
-                <option key={c.id || idx} value={idx}>
-                  {c.title || `${lang === 'bn' ? 'অধ্যায়' : 'Chapter'} ${idx + 1}`}
-                </option>
-              ))}
-            </select>
-            <button
-              type="button"
-              className="icon-btn"
-              disabled={currentChapterIdx === chapters.length - 1}
-              onClick={() => setCurrentChapterIdx((c) => Math.min(chapters.length - 1, c + 1))}
-              title={lang === 'bn' ? 'পরবর্তী অধ্যায়' : 'Next Chapter'}
-            >
-              <ChevronRight size={16} />
-            </button>
-          </div>
-        )}
-
-        {/* Zoom & Expand Controls */}
-        <div className="toolbar-group right">
-          {isExpanded && (
-            <>
+          {currentSection === 'chapter' && chapters.length > 1 && (
+            <div className="chapter-nav-group">
               <button
                 type="button"
                 className="icon-btn"
-                onClick={() => setZoomLevel((z) => Math.max(0.6, z - 0.15))}
-                title={lang === 'bn' ? 'জুম আউট' : 'Zoom Out'}
+                disabled={currentChapterIdx === 0}
+                onClick={() => setCurrentChapterIdx((c) => Math.max(0, c - 1))}
+                title={lang === 'bn' ? 'পূর্ববর্তী অধ্যায়' : 'Previous Chapter'}
               >
-                <ZoomOut size={15} />
+                <ChevronLeft size={16} />
               </button>
-              <span className="zoom-label">{Math.round(zoomLevel * 100)}%</span>
+              <select
+                value={currentChapterIdx}
+                onChange={(e) => setCurrentChapterIdx(Number(e.target.value))}
+                className="chapter-select"
+              >
+                {chapters.map((c, idx) => (
+                  <option key={c.id || idx} value={idx}>
+                    {c.title || `${lang === 'bn' ? 'অধ্যায়' : 'Chapter'} ${idx + 1}`}
+                  </option>
+                ))}
+              </select>
               <button
                 type="button"
                 className="icon-btn"
-                onClick={() => setZoomLevel((z) => Math.min(1.6, z + 0.15))}
-                title={lang === 'bn' ? 'জুম ইন' : 'Zoom In'}
+                disabled={currentChapterIdx === chapters.length - 1}
+                onClick={() => setCurrentChapterIdx((c) => Math.min(chapters.length - 1, c + 1))}
+                title={lang === 'bn' ? 'পরবর্তী অধ্যায়' : 'Next Chapter'}
               >
-                <ZoomIn size={15} />
+                <ChevronRight size={16} />
               </button>
-            </>
-          )}
-
-          {!isExpanded && onExpand && (
-            <button
-              type="button"
-              className="expand-btn"
-              onClick={onExpand}
-              title={lang === 'bn' ? 'ফুলস্ক্রিন বুক স্টুডিও খুলুন' : 'Open Fullscreen Book Studio'}
-            >
-              <Maximize2 size={13} />
-            </button>
+            </div>
           )}
         </div>
-      </div>
+      )}
 
       {/* Main Preview Stage Viewport */}
       <div className="book-stage-viewport">
