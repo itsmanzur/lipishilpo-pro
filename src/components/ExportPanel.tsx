@@ -1,10 +1,19 @@
-import { useEffect, useState } from 'react';
-import { Download, Lock, ArrowRight } from 'lucide-react';
+﻿import { useEffect, useState } from 'react';
+import { Download, Lock, ArrowRight, Maximize2, Sparkles, Sliders } from 'lucide-react';
 import type { Project } from '../api';
 import { fetchExportStatus } from '../api';
 import { translations, type Language } from '../i18n';
-import { type BookSettings, defaultBookSettings, normalizeSettings } from '../lib/book-layout';
+import {
+  type BookSettings,
+  defaultBookSettings,
+  normalizeSettings,
+  PAGE_PRESETS,
+  CALLOUT_THEMES,
+  type PagePreset,
+  type CalloutTheme,
+} from '../lib/book-layout';
 import { BookPreview } from './BookPreview';
+import { BookStudioModal } from './BookStudioModal';
 
 const SETTINGS_KEY = 'lipishilpo_book_settings';
 
@@ -18,12 +27,21 @@ function loadSettings(): BookSettings {
 }
 
 export function ExportPanel({
-  project, isPro, lang = 'en', onTxt, onHtml,
+  project,
+  isPro,
+  lang = 'en',
+  onTxt,
+  onHtml,
 }: {
-  project: Project; isPro: boolean; lang?: Language; onTxt: () => void; onHtml?: () => void;
+  project: Project;
+  isPro: boolean;
+  lang?: Language;
+  onTxt: () => void;
+  onHtml?: () => void;
 }) {
   const t = translations[lang];
   const [settings, setSettings] = useState<BookSettings>(loadSettings);
+  const [isStudioModalOpen, setIsStudioModalOpen] = useState(false);
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
   const [done, setDone] = useState('');
@@ -39,7 +57,9 @@ export function ExportPanel({
   }
 
   async function exportFile(format: 'docx' | 'pdf' | 'epub' | 'cover') {
-    setBusy(format); setError(''); setDone('');
+    setBusy(format);
+    setError('');
+    setDone('');
     try {
       const status = await fetchExportStatus();
       if (!status.pro || (format !== 'cover' && !status[format]) || (format === 'cover' && !status.pdf)) {
@@ -55,7 +75,7 @@ export function ExportPanel({
       const s = { ...settings };
       const base = source.title || (lang === 'bn' ? 'পাণ্ডুলিপি' : 'Manuscript');
       let blob: Blob;
-      let name = `${base}.${format === 'cover' ? 'cover.pdf' : format}`;
+      const name = `${base}.${format === 'cover' ? 'cover.pdf' : format}`;
 
       if (format === 'docx') {
         const bytes = await makeDocx(source, s);
@@ -72,19 +92,29 @@ export function ExportPanel({
       downloadBlob(blob, name);
       setDone(
         lang === 'bn'
-          ? `${format === 'cover' ? 'প্রচ্ছদ' : format.toUpperCase()} তৈরি হয়েছে।`
-          : `${format === 'cover' ? 'Cover' : format.toUpperCase()} generated.`,
+          ? `${format === 'cover' ? 'প্রচ্ছদ' : format.toUpperCase()} সফলভাবে তৈরি হয়েছে।`
+          : `${format === 'cover' ? 'Cover' : format.toUpperCase()} generated successfully.`,
       );
     } catch (e) {
-      setError(e instanceof Error ? e.message : (lang === 'bn' ? 'ফাইল তৈরি হয়নি। আবার চেষ্টা করুন।' : 'Export failed. Please try again.'));
-    } finally { setBusy(''); }
+      setError(
+        e instanceof Error
+          ? e.message
+          : lang === 'bn'
+            ? 'ফাইল তৈরি হয়নি। আবার চেষ্টা করুন।'
+            : 'Export failed. Please try again.',
+      );
+    } finally {
+      setBusy('');
+    }
   }
 
   return (
     <div className="analysis export-panel">
-      <span className="preview-label connected">{t.bookFormatting}</span>
-      <h3>{t.exportHeading}</h3>
-      <p>{t.exportSubtitle}</p>
+      <div className="export-panel-header">
+        <span className="preview-label connected">{t.bookFormatting}</span>
+        <h3>{t.exportHeading}</h3>
+        <p>{t.exportSubtitle}</p>
+      </div>
 
       {!isPro && (
         <div className="pro-notice">
@@ -96,150 +126,153 @@ export function ExportPanel({
         </div>
       )}
 
-      <BookPreview project={project} settings={settings} lang={lang} />
+      {/* Prominent Full Studio Launcher Banner */}
+      <div className="studio-launcher-card">
+        <div className="launcher-text">
+          <strong>{lang === 'bn' ? '📖 বুক গেট-আপ ও লাইভ প্রিভিউ' : '📖 Live Book Get-up Studio'}</strong>
+          <span>{lang === 'bn' ? '২-পাতার স্প্রেড, ফন্ট, মার্জিন ও কালার সাজান' : 'Full 2-page spread & layout studio'}</span>
+        </div>
+        <button
+          type="button"
+          className="open-studio-action-btn"
+          onClick={() => setIsStudioModalOpen(true)}
+        >
+          <Maximize2 size={16} />
+          <span>{lang === 'bn' ? 'স্টুডিও খুলুন' : 'Open Studio'}</span>
+        </button>
+      </div>
+
+      {/* Compact Preview inside Sidebar */}
+      <BookPreview
+        project={project}
+        settings={settings}
+        lang={lang}
+        onExpand={() => setIsStudioModalOpen(true)}
+        isExpanded={false}
+      />
+
+      {/* Quick Formatting Settings in Sidebar */}
+      <fieldset className="export-fieldset">
+        <legend>{lang === 'bn' ? 'বইয়ের আকার ও ফন্ট' : 'Paper & Typography'}</legend>
+        <label className="field-label">
+          {t.pageSizeLabel}
+          <select
+            value={settings.pageSize}
+            onChange={(e) => patch({ pageSize: e.target.value as PagePreset })}
+          >
+            {Object.entries(PAGE_PRESETS).map(([k, v]) => (
+              <option key={k} value={k}>
+                {v.label}
+              </option>
+            ))}
+            <option value="custom">{t.customSizeLabel}</option>
+          </select>
+        </label>
+
+        <label className="field-label">
+          {lang === 'bn' ? 'বাংলা ফন্ট' : 'Bengali Font'}
+          <select
+            value={settings.fontFamily}
+            onChange={(e) => patch({ fontFamily: e.target.value })}
+          >
+            <option value="Noto Serif Bengali">Noto Serif Bengali</option>
+            <option value="SolaimanLipi">SolaimanLipi</option>
+            <option value="Kalpurush">Kalpurush</option>
+            <option value="Tiro Bangla">Tiro Bangla</option>
+            <option value="Hind Siliguri">Hind Siliguri</option>
+          </select>
+        </label>
+
+        <div className="settings-grid">
+          <label className="field-label">
+            {t.fontSizeLabel}
+            <select
+              value={settings.fontSize}
+              onChange={(e) => patch({ fontSize: Number(e.target.value) })}
+            >
+              {[10, 11, 11.5, 12, 12.5, 13, 14, 16].map((n) => (
+                <option key={n} value={n}>
+                  {n} pt
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="field-label">
+            {t.lineHeightLabel}
+            <select
+              value={settings.lineHeight}
+              onChange={(e) => patch({ lineHeight: Number(e.target.value) })}
+            >
+              {[1.3, 1.4, 1.5, 1.6, 1.8].map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        {/* Chapter Heading Color */}
+        <label className="field-label">
+          {lang === 'bn' ? 'অধ্যায় শিরোনামের রং' : 'Chapter Heading Color'}
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <input
+              type="color"
+              value={settings.chapterHeadingColor}
+              onChange={(e) => patch({ chapterHeadingColor: e.target.value })}
+              style={{ width: '36px', height: '28px', padding: 0, cursor: 'pointer', border: '1px solid #ccc', borderRadius: '4px' }}
+            />
+            <span style={{ fontSize: '12px', color: '#666' }}>{settings.chapterHeadingColor}</span>
+          </div>
+        </label>
+      </fieldset>
 
       <fieldset className="export-fieldset">
         <legend>{t.imprintLegend}</legend>
         <label className="field-label">
           {t.authorLabel}
-          <input value={settings.author} maxLength={200} onChange={(e) => patch({ author: e.target.value })} placeholder={t.authorPlaceholder} />
+          <input
+            value={settings.author}
+            maxLength={200}
+            onChange={(e) => patch({ author: e.target.value })}
+            placeholder={t.authorPlaceholder}
+          />
         </label>
         <label className="field-label">
           {t.publisherLabel}
-          <input value={settings.publisher} maxLength={160} onChange={(e) => patch({ publisher: e.target.value })} />
+          <input
+            value={settings.publisher}
+            maxLength={160}
+            onChange={(e) => patch({ publisher: e.target.value })}
+          />
         </label>
         <div className="settings-grid">
           <label className="field-label">
             {t.yearLabel}
-            <input value={settings.year} maxLength={12} onChange={(e) => patch({ year: e.target.value })} />
+            <input
+              value={settings.year}
+              maxLength={12}
+              onChange={(e) => patch({ year: e.target.value })}
+            />
           </label>
           <label className="field-label">
             {t.isbnLabel}
-            <input value={settings.isbn} maxLength={24} onChange={(e) => patch({ isbn: e.target.value })} />
+            <input
+              value={settings.isbn}
+              maxLength={24}
+              onChange={(e) => patch({ isbn: e.target.value })}
+            />
           </label>
         </div>
-        <label className="field-label">
-          {t.dedicationLabel}
-          <input value={settings.dedication} maxLength={240} onChange={(e) => patch({ dedication: e.target.value })} />
-        </label>
-        <label className="field-label">
-          {t.copyrightLabel}
-          <input value={settings.copyrightNote} maxLength={240} onChange={(e) => patch({ copyrightNote: e.target.value })} />
-        </label>
       </fieldset>
 
-      <fieldset className="export-fieldset">
-        <legend>{t.getupLegend}</legend>
-        <label className="field-label">
-          {t.pageSizeLabel}
-          <select value={settings.pageSize} onChange={(e) => patch({ pageSize: e.target.value as BookSettings['pageSize'] })}>
-            <option value="A5">A5 — 148×210</option>
-            <option value="A4">A4 — 210×297</option>
-            <option value="B5">B5 — 176×250</option>
-            <option value="US_Trade">6×9 in</option>
-            <option value="Digest">5.5×8.5 in</option>
-            <option value="custom">{t.customSizeLabel}</option>
-          </select>
-        </label>
-        {settings.pageSize === 'custom' && (
-          <div className="settings-grid">
-            <label className="field-label">
-              {t.widthMmLabel}
-              <input type="number" min={90} max={320} value={settings.customWidthMm} onChange={(e) => patch({ customWidthMm: Number(e.target.value) })} />
-            </label>
-            <label className="field-label">
-              {t.heightMmLabel}
-              <input type="number" min={120} max={420} value={settings.customHeightMm} onChange={(e) => patch({ customHeightMm: Number(e.target.value) })} />
-            </label>
-          </div>
-        )}
-        <div className="settings-grid">
-          <label className="field-label">
-            {t.fontSizeLabel}
-            <select value={settings.fontSize} onChange={(e) => patch({ fontSize: Number(e.target.value) })}>
-              {[10, 11, 12, 13, 14, 16].map((n) => <option key={n} value={n}>{n} pt</option>)}
-            </select>
-          </label>
-          <label className="field-label">
-            {t.lineHeightLabel}
-            <select value={settings.lineHeight} onChange={(e) => patch({ lineHeight: Number(e.target.value) })}>
-              {[1.3, 1.5, 1.8].map((n) => <option key={n} value={n}>{n}</option>)}
-            </select>
-          </label>
-          <label className="field-label">
-            {t.marginInnerLabel}
-            <select value={settings.marginInnerMm} onChange={(e) => patch({ marginInnerMm: Number(e.target.value) })}>
-              {[12, 15, 18, 20, 22, 25, 30].map((n) => <option key={n} value={n}>{n} mm</option>)}
-            </select>
-          </label>
-          <label className="field-label">
-            {t.marginOuterLabel}
-            <select value={settings.marginOuterMm} onChange={(e) => patch({ marginOuterMm: Number(e.target.value) })}>
-              {[12, 15, 16, 18, 22, 25, 30].map((n) => <option key={n} value={n}>{n} mm</option>)}
-            </select>
-          </label>
-          <label className="field-label">
-            {t.marginTopLabel}
-            <select value={settings.marginTopMm} onChange={(e) => patch({ marginTopMm: Number(e.target.value) })}>
-              {[12, 15, 18, 22, 25, 30].map((n) => <option key={n} value={n}>{n} mm</option>)}
-            </select>
-          </label>
-          <label className="field-label">
-            {t.marginBottomLabel}
-            <select value={settings.marginBottomMm} onChange={(e) => patch({ marginBottomMm: Number(e.target.value) })}>
-              {[12, 15, 18, 20, 22, 25, 30].map((n) => <option key={n} value={n}>{n} mm</option>)}
-            </select>
-          </label>
-        </div>
-        <label className="field-label">
-          {t.indentLabel}
-          <select value={settings.firstLineIndentMm} onChange={(e) => patch({ firstLineIndentMm: Number(e.target.value) })}>
-            {[0, 4, 5, 6, 8, 10].map((n) => <option key={n} value={n}>{n} mm</option>)}
-          </select>
-        </label>
-        <label className="field-label">
-          {t.runningHeaderLabel}
-          <select value={settings.runningHeader} onChange={(e) => patch({ runningHeader: e.target.value as BookSettings['runningHeader'] })}>
-            <option value="none">{t.headerNone}</option>
-            <option value="title">{t.headerTitle}</option>
-            <option value="author">{t.headerAuthor}</option>
-            <option value="split">{t.headerSplit}</option>
-          </select>
-        </label>
-        <label className="checkbox-label">
-          <input type="checkbox" checked={settings.includeToc} onChange={(e) => patch({ includeToc: e.target.checked })} />
-          {t.includeTocLabel}
-        </label>
-      </fieldset>
-
-      <fieldset className="export-fieldset">
-        <legend>{t.coverPrintLegend}</legend>
-        <label className="field-label">
-          {t.coverSubtitleLabel}
-          <input value={settings.coverSubtitle} maxLength={160} onChange={(e) => patch({ coverSubtitle: e.target.value })} />
-        </label>
-        <label className="field-label">
-          {t.coverColorLabel}
-          <input type="color" value={settings.coverColor} onChange={(e) => patch({ coverColor: e.target.value })} />
-        </label>
-        <label className="field-label">
-          {t.bleedLabel}
-          <select value={settings.bleedMm} onChange={(e) => patch({ bleedMm: Number(e.target.value) })}>
-            {[0, 3, 5].map((n) => <option key={n} value={n}>{n} mm</option>)}
-          </select>
-        </label>
-        <label className="checkbox-label">
-          <input type="checkbox" checked={settings.includeCropMarks} onChange={(e) => patch({ includeCropMarks: e.target.checked })} />
-          {t.cropMarksLabel}
-        </label>
-      </fieldset>
-
+      {/* Export Action Buttons */}
       <div className="export-buttons">
         {([
-          ['docx', t.btnExportDocx],
           ['pdf', t.btnExportPdf],
-          ['cover', t.btnExportCover],
+          ['docx', t.btnExportDocx],
           ['epub', t.btnExportEpub],
+          ['cover', t.btnExportCover],
         ] as const).map(([f, label]) => (
           <button
             className={'primary full' + (!isPro ? ' pro-locked' : '')}
@@ -261,19 +294,32 @@ export function ExportPanel({
         )}
       </div>
 
-      {busy && <p className="privacy-note">{lang === 'bn' ? 'বড় বই তৈরিতে কিছু সময় লাগতে পারে। এই পৃষ্ঠা খোলা রাখুন।' : 'Generating large manuscripts may take a few moments. Please keep this tab open.'}</p>}
+      {busy && (
+        <p className="privacy-note">
+          {lang === 'bn'
+            ? 'বড় বই তৈরিতে কিছু সময় লাগতে পারে। অনুগ্রহ করে কিছুক্ষণ অপেক্ষা করুন।'
+            : 'Generating large manuscripts may take a few moments. Please wait.'}
+        </p>
+      )}
       {done && <output className="export-success">{done}</output>}
-      {error && <p className="error-message" role="alert">{error}</p>}
+      {error && (
+        <p className="error-message" role="alert">
+          {error}
+        </p>
+      )}
 
-      <p className="prototype-note">{t.exportFontNote}</p>
-      <a
-        className="font-download"
-        href={(document.getElementById('lipishilpo-root')?.dataset.fontsUrl || '/wp-content/plugins/lipishilpo/assets/fonts').replace(/\/$/, '') + '/NotoSerifBengali-Regular.ttf'}
-        download
-      >
-        {t.btnDownloadFont}
-      </a>
-      <p className="prototype-note" style={{ marginTop: '10px' }}>{t.clientSideExportNote}</p>
+      {/* Modal Dialog Mount */}
+      <BookStudioModal
+        isOpen={isStudioModalOpen}
+        onClose={() => setIsStudioModalOpen(false)}
+        project={project}
+        settings={settings}
+        onSaveSettings={setSettings}
+        isPro={isPro}
+        lang={lang}
+        onTxt={onTxt}
+        onHtml={onHtml}
+      />
     </div>
   );
 }

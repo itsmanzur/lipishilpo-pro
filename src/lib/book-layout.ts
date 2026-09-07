@@ -1,5 +1,8 @@
-export type PagePreset = 'A5' | 'A4' | 'B5' | 'US_Trade' | 'Digest' | 'custom';
+﻿export type PagePreset = 'A5' | 'A4' | 'B5' | 'US_Trade' | 'Digest' | 'custom';
 export type RunningHeader = 'none' | 'title' | 'author' | 'split';
+export type NumberFormat = 'bn' | 'en';
+export type TextAlign = 'justify' | 'left';
+export type CalloutTheme = 'emerald' | 'sky' | 'amber' | 'slate';
 
 export type BookSettings = {
   author: string;
@@ -13,6 +16,9 @@ export type BookSettings = {
   customHeightMm: number;
   fontSize: number;
   lineHeight: number;
+  fontFamily: string;
+  textAlign: TextAlign;
+  numberFormat: NumberFormat;
   marginInnerMm: number;
   marginOuterMm: number;
   marginTopMm: number;
@@ -20,18 +26,31 @@ export type BookSettings = {
   firstLineIndentMm: number;
   includeToc: boolean;
   runningHeader: RunningHeader;
+  chapterHeadingColor: string;
+  subheadingColor: string;
+  calloutTheme: CalloutTheme;
+  quoteBorderColor: string;
+  showChapterDecor: boolean;
+  dropCap: boolean;
   bleedMm: number;
   includeCropMarks: boolean;
   coverSubtitle: string;
   coverColor: string;
 };
 
-export const PAGE_PRESETS: Record<Exclude<PagePreset, 'custom'>, { w: number; h: number }> = {
-  A5: { w: 148, h: 210 },
-  A4: { w: 210, h: 297 },
-  B5: { w: 176, h: 250 },
-  US_Trade: { w: 152.4, h: 228.6 },
-  Digest: { w: 139.7, h: 215.9 },
+export const PAGE_PRESETS: Record<Exclude<PagePreset, 'custom'>, { w: number; h: number; label: string }> = {
+  A5: { w: 148, h: 210, label: 'A5 — 148×210 mm (স্ট্যান্ডার্ড বাংলা বই)' },
+  B5: { w: 176, h: 250, label: 'B5 — 176×250 mm (বড় সাইজের টেক্সটবুক)' },
+  US_Trade: { w: 152.4, h: 228.6, label: 'US Trade — 6×9 in (উপন্যাস ও নন-ফিকশন)' },
+  Digest: { w: 139.7, h: 215.9, label: 'Digest — 5.5×8.5 in (পকেট সাইজ)' },
+  A4: { w: 210, h: 297, label: 'A4 — 210×297 mm (ম্যানুস্ক্রিপ্ট/ডকুমেন্ট)' },
+};
+
+export const CALLOUT_THEMES: Record<CalloutTheme, { bg: string; border: string; title: string; label: string }> = {
+  emerald: { bg: '#ecfdf5', border: '#a7f3d0', title: '#065f46', label: 'ইসলামি / সবুজ (Emerald)' },
+  sky: { bg: '#f0f9ff', border: '#bae6fd', title: '#0369a1', label: 'তথ্য / আকাশী (Sky)' },
+  amber: { bg: '#fffbeb', border: '#fde68a', title: '#92400e', label: 'টিপস / সোনালী (Amber)' },
+  slate: { bg: '#f8fafc', border: '#cbd5e1', title: '#334155', label: 'ক্লাসিক / ধূসর (Slate)' },
 };
 
 export const defaultBookSettings: BookSettings = {
@@ -46,6 +65,9 @@ export const defaultBookSettings: BookSettings = {
   customHeightMm: 210,
   fontSize: 12,
   lineHeight: 1.5,
+  fontFamily: 'Noto Serif Bengali',
+  textAlign: 'justify',
+  numberFormat: 'bn',
   marginInnerMm: 20,
   marginOuterMm: 16,
   marginTopMm: 18,
@@ -53,6 +75,12 @@ export const defaultBookSettings: BookSettings = {
   firstLineIndentMm: 5,
   includeToc: true,
   runningHeader: 'split',
+  chapterHeadingColor: '#1a56db',
+  subheadingColor: '#166534',
+  calloutTheme: 'emerald',
+  quoteBorderColor: '#64748b',
+  showChapterDecor: true,
+  dropCap: false,
   bleedMm: 0,
   includeCropMarks: false,
   coverSubtitle: '',
@@ -150,7 +178,14 @@ export function normalizeSettings(raw: Partial<BookSettings> & { marginMm?: numb
     marginOuterMm: raw.marginOuterMm ?? fallback,
     marginTopMm: raw.marginTopMm ?? fallback,
     marginBottomMm: raw.marginBottomMm ?? fallback,
+    chapterHeadingColor: raw.chapterHeadingColor || defaultBookSettings.chapterHeadingColor,
+    subheadingColor: raw.subheadingColor || defaultBookSettings.subheadingColor,
+    calloutTheme: raw.calloutTheme || defaultBookSettings.calloutTheme,
+    quoteBorderColor: raw.quoteBorderColor || defaultBookSettings.quoteBorderColor,
     year: raw.year || defaultBookSettings.year,
     coverColor: raw.coverColor || defaultBookSettings.coverColor,
+    fontFamily: raw.fontFamily || defaultBookSettings.fontFamily,
+    numberFormat: raw.numberFormat || defaultBookSettings.numberFormat,
+    textAlign: raw.textAlign || defaultBookSettings.textAlign,
   };
 }

@@ -61,6 +61,15 @@ function lipishilpo_pro_enqueue_assets() {
 			'version'      => LIPISHILPO_PRO_VERSION,
 		);
 
+	if ( file_exists( LIPISHILPO_PRO_DIR . 'assets/js/main.css' ) ) {
+		wp_enqueue_style(
+			'lipishilpo-pro-editor',
+			LIPISHILPO_PRO_URL . 'assets/js/main.css',
+			array(),
+			$asset['version']
+		);
+	}
+
 	wp_enqueue_script(
 		'lipishilpo-pro-editor',
 		LIPISHILPO_PRO_URL . 'assets/js/lipishilpo-pro-editor.js',

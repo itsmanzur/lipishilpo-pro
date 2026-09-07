@@ -1,5 +1,6 @@
 import { createRoot, type Root } from 'react-dom/client';
 import { ProStudio, type ProPanelProps, type ProTabKey } from './ProStudio';
+import './pro-studio.css';
 
 type ProHost = {
   tabs: { key: ProTabKey; label: { en: string; bn: string } }[];

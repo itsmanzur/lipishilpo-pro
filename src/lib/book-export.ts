@@ -4,6 +4,7 @@ import { escapeXml as xml, type Project, validateProject } from './manuscript';
 import type { Content, TDocumentDefinitions } from 'pdfmake/interfaces';
 import {
   type BookSettings,
+  CALLOUT_THEMES,
   contentMarginsPt,
   defaultBookSettings,
   hasImprint,
@@ -14,6 +15,7 @@ import {
   trimSizeMm,
   validateSettings,
 } from './book-layout';
+import { parseChapterContent, toBengaliNumerals, type BookBlock } from './book-parser';
 
 export type { BookSettings } from './book-layout';
 export { defaultBookSettings, validateSettings } from './book-layout';
@@ -197,23 +199,146 @@ export function pdfDefinition(project: Project, s: BookSettings): TDocumentDefin
     });
   }
 
+  const calloutTheme = CALLOUT_THEMES[s.calloutTheme] || CALLOUT_THEMES.emerald;
+
   for (const c of project.chapters) {
     content.push({
       text: mixedText(c.title || 'অধ্যায়'),
-      fontSize: 21,
+      fontSize: 22,
       bold: true,
-      margin: [0, 0, 0, 24],
+      color: s.chapterHeadingColor || '#1a56db',
+      margin: [0, 15, 0, 18],
       pageBreak: 'before',
       // @ts-expect-error — tocItem exists at runtime
       tocItem: true,
     });
-    for (const p of paragraphs(c.text)) {
-      content.push({
-        text: mixedText(p || ' '),
-        margin: [0, 0, 0, p ? 6 : 3],
-        preserveLeadingSpaces: true,
-        leadingIndent: p.trim() ? indent : 0,
-      });
+
+    const blocks = parseChapterContent(c.text || '');
+    for (const b of blocks) {
+      if (b.type === 'heading') {
+        content.push({
+          text: mixedText(b.text),
+          fontSize: b.level === 1 ? 16 : b.level === 2 ? 14 : 12,
+          bold: true,
+          color: s.subheadingColor || '#166534',
+          margin: [0, 12, 0, 6],
+        });
+      } else if (b.type === 'quote') {
+        content.push({
+          table: {
+            widths: ['*'],
+            body: [
+              [
+                {
+                  stack: [
+                    {
+                      text: mixedText(b.text),
+                      italics: true,
+                      color: '#334155',
+                      fontSize: s.fontSize * 0.95,
+                    },
+                    b.source
+                      ? {
+                          text: mixedText(`— ${b.source}`),
+                          color: '#64748b',
+                          fontSize: s.fontSize * 0.85,
+                          alignment: 'right',
+                          margin: [0, 4, 0, 0],
+                        }
+                      : { text: '' },
+                  ],
+                  border: [true, false, false, false],
+                  borderColor: [s.quoteBorderColor || '#64748b', '', '', ''],
+                  fillColor: '#f8fafc',
+                  margin: [8, 4, 8, 4],
+                },
+              ],
+            ],
+          },
+          layout: {
+            vLineWidth: (i: number) => (i === 0 ? 3 : 0),
+            hLineWidth: () => 0,
+            vLineColor: () => s.quoteBorderColor || '#64748b',
+            paddingLeft: () => 10,
+            paddingRight: () => 8,
+            paddingTop: () => 4,
+            paddingBottom: () => 4,
+          },
+          margin: [0, 8, 0, 10],
+        });
+      } else if (b.type === 'callout') {
+        content.push({
+          table: {
+            widths: ['*'],
+            body: [
+              [
+                {
+                  stack: [
+                    {
+                      text: mixedText(b.title),
+                      bold: true,
+                      color: calloutTheme.title,
+                      fontSize: s.fontSize * 1.05,
+                      margin: [0, 0, 0, 4],
+                    },
+                    {
+                      text: mixedText(b.text),
+                      color: '#1e293b',
+                      fontSize: s.fontSize * 0.92,
+                      lineHeight: s.lineHeight,
+                    },
+                  ],
+                  fillColor: calloutTheme.bg,
+                  borderColor: [calloutTheme.border, calloutTheme.border, calloutTheme.border, calloutTheme.border],
+                  margin: [10, 8, 10, 8],
+                },
+              ],
+            ],
+          },
+          layout: {
+            hLineWidth: () => 1,
+            vLineWidth: () => 1,
+            hLineColor: () => calloutTheme.border,
+            vLineColor: () => calloutTheme.border,
+            paddingLeft: () => 10,
+            paddingRight: () => 10,
+            paddingTop: () => 8,
+            paddingBottom: () => 8,
+          },
+          margin: [0, 10, 0, 12],
+        });
+      } else if (b.type === 'citation') {
+        content.push({
+          text: mixedText(b.text),
+          fontSize: Math.max(8.5, s.fontSize * 0.82),
+          color: '#64748b',
+          italics: true,
+          margin: [0, 8, 0, 6],
+        });
+      } else if (b.type === 'list') {
+        content.push({
+          ul: b.items.map((item) => ({
+            text: mixedText(item),
+            margin: [0, 2, 0, 2],
+            fontSize: s.fontSize * 0.95,
+          })),
+          margin: [12, 4, 0, 8],
+        });
+      } else if (b.type === 'divider') {
+        content.push({
+          text: mixedText('❖ — ❖ — ❖'),
+          alignment: 'center',
+          color: '#94a3b8',
+          margin: [0, 10, 0, 10],
+        });
+      } else {
+        content.push({
+          text: mixedText(b.text || ' '),
+          margin: [0, 0, 0, b.text ? 6 : 3],
+          alignment: s.textAlign || 'justify',
+          leadingIndent: b.text.trim() ? indent : 0,
+        });
+      }
     }
   }
 
@@ -221,7 +346,7 @@ export function pdfDefinition(project: Project, s: BookSettings): TDocumentDefin
   const marks = s.includeCropMarks ? cropMarkCanvas(s) : [];
 
   return {
-    info: { title: project.title, author: s.author, creator: 'লিপিশিল্প' },
+    info: { title: project.title, author: s.author, creator: 'লিপিশিল্প প্রো' },
     pageSize: sheetSizePt(s),
     pageMargins: contentMarginsPt(s, false),
     defaultStyle: {
@@ -261,18 +386,18 @@ export function pdfDefinition(project: Project, s: BookSettings): TDocumentDefin
       }
       return headerStack.length ? { stack: headerStack } : { text: '' };
     },
-    footer: (page, pages) =>
-      page === 1
-        ? { text: '' }
-        : {
-            text: english
-              ? `${page} / ${pages}`
-              : `${page.toLocaleString('bn-BD')} / ${pages.toLocaleString('bn-BD')}`,
-            font: english ? 'NotoLatin' : 'NotoBengali',
-            alignment: 'center',
-            fontSize: 10,
-            margin: [0, 8, 0, 0],
-          },
+    footer: (page, pages) => {
+      if (page <= 1) return { text: '' };
+      const numStr = s.numberFormat === 'bn' ? toBengaliNumerals(page) : String(page);
+      const totalStr = s.numberFormat === 'bn' ? toBengaliNumerals(pages) : String(pages);
+      return {
+        text: mixedText(`${numStr} / ${totalStr}`),
+        alignment: 'center',
+        fontSize: 9.5,
+        color: '#666',
+        margin: [0, 8, 0, 0],
+      };
+    },
   };
 }
 
@@ -472,24 +597,129 @@ export async function makeDocx(project: Project, s: BookSettings): Promise<Uint8
     );
   }
   project.chapters.forEach((c, i) => {
-    children.push(new Paragraph({
-      heading: HeadingLevel.HEADING_1,
-      pageBreakBefore: true,
-      children: [
-        new Bookmark({
-          id: `chapter-${i}`,
-          children: [new TextRun({ ...run, text: c.title, bold: true, size: 40, sizeComplexScript: 40 })],
-        }),
-      ],
-      spacing: { after: 400 },
-    }));
-    for (const p of paragraphs(c.text)) {
-      children.push(new Paragraph({
-        children: [new TextRun({ ...run, text: p })],
-        spacing: { after: 100, line: Math.round(240 * s.lineHeight) },
-        indent: p.trim() && s.firstLineIndentMm ? { firstLine: mmToTwip(s.firstLineIndentMm) } : undefined,
-        widowControl: true,
-      }));
+    children.push(
+      new Paragraph({
+        heading: HeadingLevel.HEADING_1,
+        pageBreakBefore: true,
+        children: [
+          new Bookmark({
+            id: `chapter-${i}`,
+            children: [
+              new TextRun({
+                ...run,
+                text: c.title,
+                bold: true,
+                size: 42,
+                sizeComplexScript: 42,
+                color: (s.chapterHeadingColor || '#1a56db').replace('#', ''),
+              }),
+            ],
+          }),
+        ],
+        spacing: { before: 600, after: 400 },
+      }),
+    );
+
+    const blocks = parseChapterContent(c.text || '');
+    for (const b of blocks) {
+      if (b.type === 'heading') {
+        children.push(
+          new Paragraph({
+            heading: b.level === 1 ? HeadingLevel.HEADING_2 : HeadingLevel.HEADING_3,
+            spacing: { before: 300, after: 150 },
+            children: [
+              new TextRun({
+                ...run,
+                text: b.text,
+                bold: true,
+                color: (s.subheadingColor || '#166534').replace('#', ''),
+              }),
+            ],
+          }),
+        );
+      } else if (b.type === 'quote') {
+        children.push(
+          new Paragraph({
+            indent: { left: 720 },
+            spacing: { before: 200, after: 200 },
+            children: [
+              new TextRun({
+                ...run,
+                text: b.text + (b.source ? ` — ${b.source}` : ''),
+                italics: true,
+                color: '334155',
+              }),
+            ],
+          }),
+        );
+      } else if (b.type === 'callout') {
+        children.push(
+          new Paragraph({
+            indent: { left: 400, right: 400 },
+            spacing: { before: 240, after: 60 },
+            children: [
+              new TextRun({ ...run, text: `【 ${b.title} 】`, bold: true, color: '065F46' }),
+            ],
+          }),
+        );
+        children.push(
+          new Paragraph({
+            indent: { left: 400, right: 400 },
+            spacing: { before: 60, after: 240 },
+            children: [
+              new TextRun({
+                ...run,
+                text: b.text,
+                size: (s.fontSize - 1) * 2,
+                sizeComplexScript: (s.fontSize - 1) * 2,
+              }),
+            ],
+          }),
+        );
+      } else if (b.type === 'citation') {
+        children.push(
+          new Paragraph({
+            spacing: { before: 200, after: 100 },
+            children: [
+              new TextRun({
+                ...run,
+                text: b.text,
+                italics: true,
+                size: (s.fontSize - 2) * 2,
+                color: '64748B',
+              }),
+            ],
+          }),
+        );
+      } else if (b.type === 'list') {
+        for (const item of b.items) {
+          children.push(
+            new Paragraph({
+              bullet: { level: 0 },
+              spacing: { before: 60, after: 60 },
+              children: [new TextRun({ ...run, text: item })],
+            }),
+          );
+        }
+      } else if (b.type === 'divider') {
+        children.push(
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            spacing: { before: 200, after: 200 },
+            children: [new TextRun({ ...run, text: '❖ — ❖ — ❖', color: '94A3B8' })],
+          }),
+        );
+      } else if (b.type === 'paragraph') {
+        children.push(
+          new Paragraph({
+            children: [new TextRun({ ...run, text: b.text })],
+            spacing: { after: 100, line: Math.round(240 * s.lineHeight) },
+            alignment: s.textAlign === 'left' ? AlignmentType.LEFT : AlignmentType.JUSTIFIED,
+            indent: b.text.trim() && s.firstLineIndentMm ? { firstLine: mmToTwip(s.firstLineIndentMm) } : undefined,
+            widowControl: true,
+          }),
+        );
+      }
     }
   });
   const trim = trimSizeMm(s);
@@ -620,18 +850,32 @@ export function makeEpub(project: Project, s: BookSettings, fonts: FontFiles): U
     ),
   );
   files['EPUB/style.css'] = strToU8(
-    `@font-face{font-family:Lipishilpo;src:url('fonts/regular.ttf')}@font-face{font-family:Lipishilpo;src:url('fonts/bold.ttf');font-weight:bold}@font-face{font-family:LipishilpoLatin;src:url('fonts/latin.ttf')}@font-face{font-family:LipishilpoLatin;src:url('fonts/latin-bold.ttf');font-weight:bold}body{font-family:Lipishilpo,LipishilpoLatin,serif;line-height:${s.lineHeight};margin:5%;}p{white-space:pre-wrap;margin:0 0 .65em;text-indent:${s.firstLineIndentMm}mm;}h1{font-size:1.8em;line-height:1.5;page-break-after:avoid;text-indent:0;}a{color:inherit}section.titlepage{text-align:center;padding-top:20%;}section.titlepage p.sub{font-style:italic;opacity:.85}section.dedication{text-align:center;padding-top:30%;font-style:italic}`,
+    `@font-face{font-family:Lipishilpo;src:url('fonts/regular.ttf')}@font-face{font-family:Lipishilpo;src:url('fonts/bold.ttf');font-weight:bold}@font-face{font-family:LipishilpoLatin;src:url('fonts/latin.ttf')}@font-face{font-family:LipishilpoLatin;src:url('fonts/latin-bold.ttf');font-weight:bold}body{font-family:Lipishilpo,LipishilpoLatin,serif;line-height:${s.lineHeight};margin:5%;text-align:${s.textAlign};}p{white-space:pre-wrap;margin:0 0 .65em;text-indent:${s.firstLineIndentMm}mm;}h1{font-size:1.8em;line-height:1.4;page-break-after:avoid;color:${s.chapterHeadingColor || '#1a56db'};text-indent:0;}h2,h3{color:${s.subheadingColor || '#166534'};text-indent:0;}blockquote.book-quote{border-left:3px solid ${s.quoteBorderColor || '#64748b'};padding-left:12px;margin:1em 0;font-style:italic;color:#334155;}div.book-callout{background-color:#ecfdf5;border:1px solid #a7f3d0;border-radius:6px;padding:12px;margin:1.2em 0;}div.book-callout-title{font-weight:bold;color:#065f46;margin-bottom:6px;border-bottom:1px solid #a7f3d0;padding-bottom:4px;}p.book-citation{font-size:0.85em;color:#64748b;font-style:italic;border-top:1px dashed #cbd5e1;padding-top:6px;margin-top:1.2em;}a{color:inherit}section.titlepage{text-align:center;padding-top:20%;}section.titlepage p.sub{font-style:italic;opacity:.85}section.dedication{text-align:center;padding-top:30%;font-style:italic}`,
   );
   files['EPUB/fonts/regular.ttf'] = fonts.regular;
   files['EPUB/fonts/bold.ttf'] = fonts.bold;
   files['EPUB/fonts/OFL.txt'] = fonts.license;
   files['EPUB/fonts/latin.ttf'] = fonts.latin;
   files['EPUB/fonts/latin-bold.ttf'] = fonts.latinBold;
+
   project.chapters.forEach((c, i) => {
+    const blocks = parseChapterContent(c.text || '');
+    const chapterHtml = blocks
+      .map((b) => {
+        if (b.type === 'heading') return `<h${b.level + 1}>${xml(b.text)}</h${b.level + 1}>`;
+        if (b.type === 'quote') return `<blockquote class="book-quote"><p>${xml(b.text)}</p>${b.source ? `<small>— ${xml(b.source)}</small>` : ''}</blockquote>`;
+        if (b.type === 'callout') return `<div class="book-callout"><div class="book-callout-title">${xml(b.title)}</div><p>${xml(b.text)}</p></div>`;
+        if (b.type === 'citation') return `<p class="book-citation">${xml(b.text)}</p>`;
+        if (b.type === 'list') return `<ul>${b.items.map((it) => `<li>${xml(it)}</li>`).join('')}</ul>`;
+        if (b.type === 'divider') return `<div style="text-align:center;margin:1em 0;color:#94a3b8;">❖ — ❖ — ❖</div>`;
+        return `<p>${b.text ? xml(b.text) : '&#160;'}</p>`;
+      })
+      .join('');
+
     files[`EPUB/chapter-${i}.xhtml`] = strToU8(
       xhtml(
         c.title,
-        `<section epub:type="chapter"><h1>${xml(c.title)}</h1>${paragraphs(c.text).map((p) => `<p>${p ? xml(p) : '&#160;'}</p>`).join('')}</section>`,
+        `<section epub:type="chapter"><h1>${xml(c.title)}</h1>${chapterHtml}</section>`,
       ),
     );
   });
