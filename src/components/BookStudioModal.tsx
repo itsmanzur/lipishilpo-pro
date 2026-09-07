@@ -9,11 +9,16 @@ import {
   FileText,
   Bookmark,
   CheckCircle,
+  AlertTriangle,
+  Info,
   Sparkles,
   User,
   Hash,
   ListOrdered,
   Layers,
+  ShieldCheck,
+  QrCode,
+  Feather,
 } from 'lucide-react';
 import type { Project } from '../api';
 import { fetchExportStatus } from '../api';
@@ -27,14 +32,20 @@ import {
   PAGE_NUMBER_STYLES,
   TOC_PRESETS,
   CHAPTER_HEADER_STYLES,
+  SCENE_BREAK_MOTIFS,
+  LEAD_IN_STYLES,
   type PagePreset,
   type CalloutTheme,
   type PageNumberPosition,
   type PageNumberStyle,
   type TocPreset,
   type ChapterHeaderStyle,
+  type SceneBreakMotif,
+  type LeadInStyle,
   calculateSpineMm,
   estimatePageCount,
+  runPreflightInspection,
+  generateEan13Svg,
 } from '../lib/book-layout';
 import { BookPreview } from './BookPreview';
 
@@ -62,6 +73,7 @@ export function BookStudioModal({
   const [activeTab, setActiveTab] = useState<'layout' | 'styling' | 'meta' | 'cover'>('layout');
   const [busy, setBusy] = useState<string>('');
   const [statusMsg, setStatusMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+  const [showPreflight, setShowPreflight] = useState<boolean>(false);
 
   if (!isOpen) return null;
 
@@ -82,6 +94,8 @@ export function BookStudioModal({
   const totalChars = project.chapters?.reduce((sum, c) => sum + (c.text?.length || 0), 0) || 5000;
   const estimatedPages = estimatePageCount(totalChars, settings);
   const calculatedSpine = calculateSpineMm(estimatedPages, settings.paperGsm);
+  const chapterCount = project.chapters?.length || 1;
+  const preflight = runPreflightInspection(settings, totalChars, chapterCount);
 
   async function exportFile(format: 'docx' | 'pdf' | 'epub' | 'cover') {
     setBusy(format);
@@ -134,12 +148,116 @@ export function BookStudioModal({
     <div className="lipishilpo-studio-modal-overlay">
       <div className="lipishilpo-studio-modal">
         {/* Top Navigation Bar */}
-        <div className="modal-top-bar">
+        <div className="modal-top-bar" style={{ position: 'relative' }}>
           <div className="modal-title-area">
             <span className="modal-badge-pro">PRO STUDIO</span>
             <h2>{lang === 'bn' ? 'বুক গেট-আপ ও পাবলিকেশন স্টুডিও' : 'Book Get-up & Publication Studio'}</h2>
             <span className="project-tag">{project.title || (lang === 'bn' ? 'নতুন বই' : 'Untitled Book')}</span>
+
+            {/* Preflight Health Pill */}
+            <button
+              type="button"
+              className={`preflight-pill-btn ${preflight.isPressReady ? 'pass' : 'warning'}`}
+              onClick={() => setShowPreflight(!showPreflight)}
+              title={lang === 'bn' ? 'প্রেস-রেডি ইন্সপেকশন বিস্তারিত দেখুন' : 'View Pre-flight Press Inspection'}
+            >
+              <ShieldCheck size={14} />
+              <span>
+                {preflight.isPressReady
+                  ? lang === 'bn'
+                    ? `প্রেস-রেডি ১০০%`
+                    : `Press Ready 100%`
+                  : lang === 'bn'
+                    ? `ইন্সপেকশন ${preflight.score}%`
+                    : `Inspection ${preflight.score}%`}
+              </span>
+            </button>
           </div>
+
+          {/* Pre-flight Inspector Dropdown Drawer */}
+          {showPreflight && (
+            <div className="preflight-inspector-overlay">
+              <div className="preflight-inspector-header">
+                <h4>
+                  <ShieldCheck size={16} />
+                  {lang === 'bn' ? 'প্রি-ফ্লাইট প্রেস ইন্সপেকশন রিপোর্ট' : 'Pre-flight Press Inspection Report'}
+                </h4>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span className={`preflight-score-badge ${preflight.isPressReady ? 'pass' : 'warning'}`}>
+                    {preflight.score}/100
+                  </span>
+                  <button
+                    type="button"
+                    style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}
+                    onClick={() => setShowPreflight(false)}
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              </div>
+
+              <div className="preflight-issue-list">
+                {preflight.issues.map((issue) => (
+                  <div key={issue.id} className={`preflight-issue-card ${issue.type}`}>
+                    <div className="issue-header">
+                      <span className="issue-title">
+                        {issue.type === 'pass' && <CheckCircle size={14} color="#16a34a" />}
+                        {issue.type === 'warning' && <AlertTriangle size={14} color="#d97706" />}
+                        {issue.type === 'info' && <Info size={14} color="#0284c7" />}
+                        {issue.title}
+                      </span>
+                    </div>
+                    <p className="issue-message">{issue.message}</p>
+                    {issue.id === 'gutter_narrow_heavy' && (
+                      <button
+                        type="button"
+                        className="issue-fix-btn"
+                        onClick={() => patch({ marginInnerMm: 22 })}
+                      >
+                        ⚡ ভেতরের মার্জিন ২২ মিমি করুন (Auto Fix)
+                      </button>
+                    )}
+                    {issue.id === 'gutter_narrow_mid' && (
+                      <button
+                        type="button"
+                        className="issue-fix-btn"
+                        onClick={() => patch({ marginInnerMm: 20 })}
+                      >
+                        ⚡ ভেতরের মার্জিন ২০ মিমি করুন (Auto Fix)
+                      </button>
+                    )}
+                    {issue.id === 'line_height_tight' && (
+                      <button
+                        type="button"
+                        className="issue-fix-btn"
+                        onClick={() => patch({ lineHeight: 1.55 })}
+                      >
+                        ⚡ লাইন হাইট ১.৫৫ করুন (Auto Fix)
+                      </button>
+                    )}
+                    {issue.id === 'toc_missing' && (
+                      <button
+                        type="button"
+                        className="issue-fix-btn"
+                        onClick={() => patch({ includeToc: true })}
+                      >
+                        ⚡ স্বয়ংক্রিয় সূচিপত্র যুক্ত করুন (Auto Fix)
+                      </button>
+                    )}
+                    {issue.id === 'crop_marks_off' && (
+                      <button
+                        type="button"
+                        className="issue-fix-btn"
+                        onClick={() => patch({ includeCropMarks: true })}
+                      >
+                        ⚡ কাটিং মার্ক সক্রিয় করুন (Auto Fix)
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="modal-actions-area">
             {/* Quick Export Actions */}
@@ -649,22 +767,61 @@ export function BookStudioModal({
                   </div>
 
                   <div className="section-divider-title">
+                    <span>{lang === 'bn' ? '১০+ অলঙ্কৃত সিন ব্রেক মোটিফ (Scene Break Motifs)' : '10+ Scene Break Motifs'}</span>
+                  </div>
+
+                  <div className="preset-card-grid">
+                    {(Object.entries(SCENE_BREAK_MOTIFS) as [SceneBreakMotif, typeof SCENE_BREAK_MOTIFS[SceneBreakMotif]][]).map(
+                      ([key, opt]) => {
+                        const isSelected = (settings.sceneBreakMotif || 'motifClassic') === key;
+                        return (
+                          <div
+                            key={key}
+                            className={`option-choice-card ${isSelected ? 'selected' : ''}`}
+                            onClick={() => patch({ sceneBreakMotif: key })}
+                          >
+                            <div className="choice-card-header">
+                              <span className="choice-sample-tag" style={{ fontSize: '13px' }}>{opt.symbol}</span>
+                              {isSelected && <CheckCircle size={14} className="selected-icon" />}
+                            </div>
+                            <span className="choice-title" style={{ marginTop: '4px' }}>{opt.label}</span>
+                            <span className="choice-desc">{opt.desc}</span>
+                          </div>
+                        );
+                      }
+                    )}
+                  </div>
+
+                  <div className="section-divider-title">
+                    <span>{lang === 'bn' ? 'অনুচ্ছেদের সূচনা স্টাইল (Lead-in Style)' : 'First Paragraph Lead-in Style'}</span>
+                  </div>
+
+                  <div className="preset-card-grid">
+                    {(Object.entries(LEAD_IN_STYLES) as [LeadInStyle, typeof LEAD_IN_STYLES[LeadInStyle]][]).map(
+                      ([key, opt]) => {
+                        const isSelected = (settings.leadInStyle || 'drop_cap') === key;
+                        return (
+                          <div
+                            key={key}
+                            className={`option-choice-card ${isSelected ? 'selected' : ''}`}
+                            onClick={() => patch({ leadInStyle: key, dropCap: key === 'drop_cap' })}
+                          >
+                            <div className="choice-card-header">
+                              <span className="choice-title">{opt.label}</span>
+                              {isSelected && <CheckCircle size={14} className="selected-icon" />}
+                            </div>
+                            <span className="choice-desc">{opt.desc}</span>
+                          </div>
+                        );
+                      }
+                    )}
+                  </div>
+
+                  <div className="section-divider-title">
                     <span>{lang === 'bn' ? 'অলঙ্করণ, রানিং হেডার ও রং' : 'Decorations & Colors'}</span>
                   </div>
 
                   <div className="grid-2-col">
-                    <div className="form-checkbox">
-                      <input
-                        type="checkbox"
-                        id="dropCapStyle"
-                        checked={settings.dropCap}
-                        onChange={(e) => patch({ dropCap: e.target.checked })}
-                      />
-                      <label htmlFor="dropCapStyle">
-                        {lang === 'bn' ? 'ড্রপ ক্যাপ (Drop Cap)' : 'Drop Cap'}
-                      </label>
-                    </div>
-
                     <div className="form-checkbox">
                       <input
                         type="checkbox"
@@ -673,7 +830,19 @@ export function BookStudioModal({
                         onChange={(e) => patch({ showChapterDecor: e.target.checked })}
                       />
                       <label htmlFor="decorMotif">
-                        {lang === 'bn' ? 'মোটিফ (❖ — ❖)' : 'Motif'}
+                        {lang === 'bn' ? 'অধ্যায় মোটিফ ডিভাইডার দেখান' : 'Show Chapter Motif'}
+                      </label>
+                    </div>
+
+                    <div className="form-checkbox">
+                      <input
+                        type="checkbox"
+                        id="dropCapStyle"
+                        checked={settings.dropCap}
+                        onChange={(e) => patch({ dropCap: e.target.checked, leadInStyle: e.target.checked ? 'drop_cap' : 'clean' })}
+                      />
+                      <label htmlFor="dropCapStyle">
+                        {lang === 'bn' ? 'ড্রপ ক্যাপ (Drop Cap)' : 'Drop Cap'}
                       </label>
                     </div>
                   </div>
@@ -757,7 +926,52 @@ export function BookStudioModal({
               {activeTab === 'meta' && (
                 <div className="control-section-panel">
                   <div className="section-divider-title">
-                    <span>{lang === 'bn' ? 'ইমপ্রিন্ট ও প্রকাশনা স্বত্ব' : 'Imprint & Rights'}</span>
+                    <span>{lang === 'bn' ? 'হাফ-টাইটেল ও প্রারম্ভিক পাতা' : 'Half-Title & Epigraph'}</span>
+                  </div>
+
+                  <div className="form-group">
+                    <label>{lang === 'bn' ? 'হাফ-টাইটেল (Half-Title)' : 'Half-Title'}</label>
+                    <input
+                      type="text"
+                      value={settings.halfTitle || ''}
+                      onChange={(e) => patch({ halfTitle: e.target.value })}
+                      placeholder={project.title || (lang === 'bn' ? 'বইয়ের সংক্ষিপ্ত নাম' : 'Book Short Title')}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label>{lang === 'bn' ? 'উৎসর্গ বাণী (Dedication)' : 'Dedication'}</label>
+                    <textarea
+                      rows={2}
+                      value={settings.dedication}
+                      onChange={(e) => patch({ dedication: e.target.value })}
+                      placeholder={lang === 'bn' ? 'যাদের আত্মত্যাগে ও অনুপ্রেরণায় এই বই...' : 'Dedicated to...'}
+                    />
+                  </div>
+
+                  <div className="grid-2-col">
+                    <div className="form-group">
+                      <label>{lang === 'bn' ? 'এপিগ্রাফ / মূল উদ্ধৃতি (Epigraph)' : 'Epigraph Quote'}</label>
+                      <input
+                        type="text"
+                        value={settings.epigraphText || ''}
+                        onChange={(e) => patch({ epigraphText: e.target.value })}
+                        placeholder={lang === 'bn' ? 'জ্ঞানই শক্তি, প্রজ্ঞাই আলো...' : 'Knowledge is power...'}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>{lang === 'bn' ? 'উদ্ধৃতি সূত্র (Source)' : 'Epigraph Source'}</label>
+                      <input
+                        type="text"
+                        value={settings.epigraphSource || ''}
+                        onChange={(e) => patch({ epigraphSource: e.target.value })}
+                        placeholder={lang === 'bn' ? '— ইমাম গাজ্জালী' : '— Author Name'}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="section-divider-title">
+                    <span>{lang === 'bn' ? 'ইমপ্রিন্ট ও প্রকাশনা স্বত্ব (CIP)' : 'Imprint & Rights'}</span>
                   </div>
 
                   <div className="form-group">
@@ -772,12 +986,12 @@ export function BookStudioModal({
 
                   <div className="grid-2-col">
                     <div className="form-group">
-                      <label>{lang === 'bn' ? 'প্রকাশকাল / সংস্করণ' : 'Edition / Year'}</label>
+                      <label>{lang === 'bn' ? 'সংস্করণ ও প্রকাশকাল' : 'Edition / Year'}</label>
                       <input
                         type="text"
-                        value={settings.year}
-                        onChange={(e) => patch({ year: e.target.value })}
-                        placeholder="ফেব্রুয়ারি ২০২৬"
+                        value={settings.edition || settings.year}
+                        onChange={(e) => patch({ edition: e.target.value, year: e.target.value })}
+                        placeholder="প্রথম প্রকাশ: অমর একুশে বইমেলা ২০২৬"
                       />
                     </div>
                     <div className="form-group">
@@ -785,8 +999,8 @@ export function BookStudioModal({
                       <input
                         type="text"
                         value={settings.isbn}
-                        onChange={(e) => patch({ isbn: e.target.value })}
-                        placeholder="978-984-..."
+                        onChange={(e) => patch({ isbn: e.target.value, barcodeNumber: e.target.value || settings.barcodeNumber })}
+                        placeholder="978-984-91234-5-6"
                       />
                     </div>
                   </div>
@@ -797,8 +1011,8 @@ export function BookStudioModal({
                       <input
                         type="text"
                         value={settings.price || ''}
-                        onChange={(e) => patch({ price: e.target.value })}
-                        placeholder="৩৫০ টাকা"
+                        onChange={(e) => patch({ price: e.target.value, coverPrice: e.target.value || settings.coverPrice })}
+                        placeholder="৳ ৩৫০"
                       />
                     </div>
                     <div className="form-group">
@@ -828,18 +1042,18 @@ export function BookStudioModal({
                         type="text"
                         value={settings.printer || ''}
                         onChange={(e) => patch({ printer: e.target.value })}
-                        placeholder="আল-মদিনা প্রেস, ঢাকা"
+                        placeholder="আল-মদিনা প্রেস, বাংলাবাজার, ঢাকা"
                       />
                     </div>
                   </div>
 
                   <div className="form-group">
-                    <label>{lang === 'bn' ? 'উৎসর্গ বাণী (Dedication)' : 'Dedication'}</label>
-                    <textarea
-                      rows={2}
-                      value={settings.dedication}
-                      onChange={(e) => patch({ dedication: e.target.value })}
-                      placeholder={lang === 'bn' ? 'যাদের দোয়ায় এই বইটির জন্ম...' : 'Dedicated to...'}
+                    <label>{lang === 'bn' ? 'CIP বিষয় শ্রেণিভুক্তকরণ (জাতীয় গ্রন্থকেন্দ্র)' : 'CIP Subject'}</label>
+                    <input
+                      type="text"
+                      value={settings.cipSubject || ''}
+                      onChange={(e) => patch({ cipSubject: e.target.value })}
+                      placeholder="বাংলা সাহিত্য — প্রবন্ধ ও গবেষণা"
                     />
                   </div>
 
@@ -849,7 +1063,7 @@ export function BookStudioModal({
                       type="text"
                       value={settings.copyrightNote}
                       onChange={(e) => patch({ copyrightNote: e.target.value })}
-                      placeholder="সর্বস্বত্ব সংরক্ষিত © ২০২৬"
+                      placeholder="সর্বস্বত্ব সংরক্ষিত © ২০২৬ লেখক ও প্রকাশক"
                     />
                   </div>
 
@@ -870,7 +1084,7 @@ export function BookStudioModal({
                   <div className="form-group">
                     <label>{lang === 'bn' ? 'ভূমিকার মূলপাঠ' : 'Preface Text'}</label>
                     <textarea
-                      rows={6}
+                      rows={5}
                       value={settings.prefaceText || ''}
                       onChange={(e) => patch({ prefaceText: e.target.value })}
                       placeholder={
@@ -898,7 +1112,7 @@ export function BookStudioModal({
                   <div className="form-group">
                     <label>{lang === 'bn' ? 'সংক্ষিপ্ত আত্মজীবনী ও পেশা' : 'Biography'}</label>
                     <textarea
-                      rows={5}
+                      rows={4}
                       value={settings.authorBio || ''}
                       onChange={(e) => patch({ authorBio: e.target.value })}
                       placeholder={
@@ -912,7 +1126,7 @@ export function BookStudioModal({
                   <div className="form-group">
                     <label>{lang === 'bn' ? 'লেখকের অন্যান্য প্রকাশিত বই' : 'Other Published Books'}</label>
                     <textarea
-                      rows={4}
+                      rows={3}
                       value={settings.otherBooks || ''}
                       onChange={(e) => patch({ otherBooks: e.target.value })}
                       placeholder={
@@ -922,14 +1136,38 @@ export function BookStudioModal({
                       }
                     />
                   </div>
+
+                  <div className="section-divider-title">
+                    <span>{lang === 'bn' ? 'কৃতজ্ঞতা স্বীকার ও শব্দকোষ (Back Matter)' : 'Acknowledgements & Glossary'}</span>
+                  </div>
+
+                  <div className="form-group">
+                    <label>{lang === 'bn' ? 'কৃতজ্ঞতা স্বীকার (Acknowledgement)' : 'Acknowledgement'}</label>
+                    <textarea
+                      rows={3}
+                      value={settings.acknowledgement || ''}
+                      onChange={(e) => patch({ acknowledgement: e.target.value })}
+                      placeholder={lang === 'bn' ? 'যাদের প্রত্যক্ষ ও পরোক্ষ সহযোগিতায়...' : 'Acknowledgements...'}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label>{lang === 'bn' ? 'শব্দকোষ ও টীকা (Glossary / Notes)' : 'Glossary / Notes'}</label>
+                    <textarea
+                      rows={3}
+                      value={settings.glossary || ''}
+                      onChange={(e) => patch({ glossary: e.target.value })}
+                      placeholder={lang === 'bn' ? 'কঠিন শব্দ ও পারিভাষিক ব্যাখ্যা...' : 'Glossary and term definitions...'}
+                    />
+                  </div>
                 </div>
               )}
 
-              {/* TAB 4: COVER & PROCHCHHOD */}
+              {/* TAB 4: FULL COVER WRAP, SPINE & EAN-13 BARCODE */}
               {activeTab === 'cover' && (
                 <div className="control-section-panel">
                   <div className="section-divider-title">
-                    <span>{lang === 'bn' ? 'প্রচ্ছদ ও সাবটাইটেল' : 'Cover Subtitle'}</span>
+                    <span>{lang === 'bn' ? 'সামনের প্রচ্ছদ (Front Cover)' : 'Front Cover'}</span>
                   </div>
 
                   <div className="form-group">
@@ -965,17 +1203,133 @@ export function BookStudioModal({
                     </div>
                   </div>
 
+                  <div className="grid-2-col">
+                    <div className="form-group">
+                      <label>{lang === 'bn' ? 'প্রচ্ছদের ফিনিশিং (Lamination)' : 'Lamination Finish'}</label>
+                      <select
+                        value={settings.coverFinish || 'matte'}
+                        onChange={(e) => patch({ coverFinish: e.target.value as 'matte' | 'glossy' })}
+                      >
+                        <option value="matte">ম্যাট লেমিনেশন (Matte — অভিজাত)</option>
+                        <option value="glossy">গ্লসি লেমিনেশন (Glossy — উজ্জ্বল)</option>
+                      </select>
+                    </div>
+
+                    <div className="form-checkbox" style={{ marginTop: '24px' }}>
+                      <input
+                        type="checkbox"
+                        id="decorLine"
+                        checked={settings.showChapterDecor}
+                        onChange={(e) => patch({ showChapterDecor: e.target.checked })}
+                      />
+                      <label htmlFor="decorLine">
+                        {lang === 'bn' ? 'অলঙ্করণ ও মোটিফ দেখান' : 'Show Motif'}
+                      </label>
+                    </div>
+                  </div>
+
+                  <div className="section-divider-title">
+                    <span>{lang === 'bn' ? 'বইয়ের স্পাইন (Spine Width)' : 'Spine Settings'}</span>
+                  </div>
+
+                  <div className="spine-calculator-card" style={{ marginBottom: '10px' }}>
+                    <div className="spine-calc-item">
+                      <span className="calc-label">{lang === 'bn' ? 'মোট পাতা' : 'Total Pages'}</span>
+                      <span className="calc-value">{estimatedPages}</span>
+                    </div>
+                    <div className="spine-calc-item highlight">
+                      <span className="calc-label">{lang === 'bn' ? 'হিসাবকৃত স্পাইন' : 'Calculated Spine'}</span>
+                      <span className="calc-value">{calculatedSpine} mm</span>
+                    </div>
+                    <div className="spine-calc-item">
+                      <span className="calc-label">{lang === 'bn' ? 'কাগজ' : 'Paper'}</span>
+                      <span className="calc-value">{settings.paperGsm || 80} GSM</span>
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <label>{lang === 'bn' ? 'স্পাইনের টেক্সট (ঐচ্ছিক)' : 'Spine Custom Text'}</label>
+                    <input
+                      type="text"
+                      value={settings.spineText || ''}
+                      onChange={(e) => patch({ spineText: e.target.value })}
+                      placeholder={project.title || (lang === 'bn' ? 'বইয়ের নাম ও লেখকের নাম' : 'Book Title & Author')}
+                    />
+                  </div>
+
+                  <div className="section-divider-title">
+                    <span>{lang === 'bn' ? 'পেছনের প্রচ্ছদ ও ব্লার্ব (Back Cover)' : 'Back Cover & Blurb'}</span>
+                  </div>
+
+                  <div className="form-group">
+                    <label>{lang === 'bn' ? 'পেছনের প্রচ্ছদের মূল ব্লার্ব / সারাংশ' : 'Back Cover Blurb'}</label>
+                    <textarea
+                      rows={4}
+                      value={settings.backCoverBlurb || ''}
+                      onChange={(e) => patch({ backCoverBlurb: e.target.value })}
+                      placeholder={
+                        lang === 'bn'
+                          ? 'বইটির আকর্ষণীয় সংক্ষিপ্ত ফ্ল্যাপ বক্তব্য যা পাঠককে আকৃষ্ট করবে...'
+                          : 'Catchy book blurb and summary for the back cover...'
+                      }
+                    />
+                  </div>
+
+                  <div className="section-divider-title">
+                    <span>{lang === 'bn' ? 'EAN-13 ভেক্টর বারকোড জেনারেটর' : 'Vector EAN-13 Barcode'}</span>
+                  </div>
+
                   <div className="form-checkbox">
                     <input
                       type="checkbox"
-                      id="decorLine"
-                      checked={settings.showChapterDecor}
-                      onChange={(e) => patch({ showChapterDecor: e.target.checked })}
+                      id="showBarcodeCheck"
+                      checked={settings.showBarcode}
+                      onChange={(e) => patch({ showBarcode: e.target.checked })}
                     />
-                    <label htmlFor="decorLine">
-                      {lang === 'bn' ? 'প্রচ্ছদে অলঙ্করণ ও ডিভাইডার সিম্বল দেখান' : 'Show Cover Motif / Ornament'}
+                    <label htmlFor="showBarcodeCheck">
+                      {lang === 'bn' ? 'পেছনের প্রচ্ছদে অটোমেটিক EAN-13 বারকোড বসান' : 'Show EAN-13 Barcode on Back Cover'}
                     </label>
                   </div>
+
+                  {settings.showBarcode && (
+                    <>
+                      <div className="grid-2-col">
+                        <div className="form-group">
+                          <label>{lang === 'bn' ? 'ISBN / বারকোড ডিজিট (১৩ সংখ্যা)' : 'ISBN/Barcode Digits'}</label>
+                          <input
+                            type="text"
+                            value={settings.barcodeNumber || settings.isbn || '9789849123456'}
+                            onChange={(e) => patch({ barcodeNumber: e.target.value })}
+                            placeholder="9789849123456"
+                          />
+                        </div>
+                        <div className="form-group">
+                          <label>{lang === 'bn' ? 'বারকোড মূল্য ট্যাগ' : 'Barcode Price'}</label>
+                          <input
+                            type="text"
+                            value={settings.coverPrice || settings.price || '৳ ৩৫০'}
+                            onChange={(e) => patch({ coverPrice: e.target.value })}
+                            placeholder="৳ ৩৫০"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Live SVG Barcode Preview in sidebar */}
+                      <div style={{ marginTop: '8px', textAlign: 'center' }}>
+                        <div
+                          dangerouslySetInnerHTML={{
+                            __html: generateEan13Svg(
+                              settings.barcodeNumber || settings.isbn || '9789849123456',
+                              settings.coverPrice || settings.price || '৳ ৩৫০'
+                            ),
+                          }}
+                        />
+                        <span style={{ fontSize: '11px', color: '#64748b', display: 'block', marginTop: '4px' }}>
+                          ✓ প্রেসে সরাসরি স্ক্যানযোগ্য হাই-রেজোলিউশন ভেক্টর EAN-13 বারকোড
+                        </span>
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
             </div>

@@ -1015,3 +1015,414 @@
   padding: 2px 6px;
   border-radius: 4px;
 }
+
+/* ==========================================================================
+   Pre-flight Inspector & Health Score
+   ========================================================================== */
+.preflight-pill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.preflight-pill-btn.pass {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+  border-color: #10b981;
+}
+
+.preflight-pill-btn.warning {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+  border-color: #f59e0b;
+}
+
+.preflight-pill-btn:hover {
+  transform: scale(1.03);
+}
+
+.preflight-inspector-overlay {
+  position: absolute;
+  top: 52px;
+  right: 240px;
+  width: 440px;
+  background: #ffffff;
+  color: #0f172a;
+  border-radius: 10px;
+  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.35);
+  border: 1px solid #e2e8f0;
+  z-index: 1000;
+  overflow: hidden;
+  animation: lipiFadeIn 0.2s ease;
+}
+
+.preflight-inspector-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: #0f172a;
+  color: #ffffff;
+}
+
+.preflight-inspector-header h4 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.preflight-score-badge {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-weight: 800;
+}
+.preflight-score-badge.pass { background: #059669; color: #fff; }
+.preflight-score-badge.warning { background: #d97706; color: #fff; }
+
+.preflight-issue-list {
+  padding: 12px 16px;
+  max-height: 380px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.preflight-issue-card {
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.preflight-issue-card.pass { background: #f0fdf4; border-color: #bbf7d0; }
+.preflight-issue-card.warning { background: #fffbeb; border-color: #fde68a; }
+.preflight-issue-card.info { background: #f8fafc; border-color: #e2e8f0; }
+
+.issue-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.issue-title {
+  font-size: 12.5px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.preflight-issue-card.pass .issue-title { color: #166534; }
+.preflight-issue-card.warning .issue-title { color: #92400e; }
+.preflight-issue-card.info .issue-title { color: #334155; }
+
+.issue-message {
+  font-size: 11.5px;
+  color: #475569;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.issue-fix-btn {
+  align-self: flex-start;
+  margin-top: 4px;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  background: #0284c7;
+  color: #ffffff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.issue-fix-btn:hover { background: #0369a1; }
+
+/* ==========================================================================
+   Safe Zone & Bleed Overlay Guides
+   ========================================================================== */
+.safe-zone-overlay-container {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 50;
+}
+
+.bleed-guide-line {
+  position: absolute;
+  inset: 0;
+  border: 1.5px dashed rgba(239, 68, 68, 0.85);
+  box-shadow: inset 0 0 0 1px rgba(239, 68, 68, 0.2);
+}
+
+.bleed-label-tag {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  background: #ef4444;
+  color: #ffffff;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 4px;
+  border-radius: 2px;
+  line-height: 1;
+}
+
+.safe-zone-margin-box {
+  position: absolute;
+  border: 1.5px solid rgba(16, 185, 129, 0.9);
+  background: rgba(16, 185, 129, 0.02);
+}
+
+.safe-label-tag {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  background: #10b981;
+  color: #ffffff;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 4px;
+  border-radius: 2px;
+  line-height: 1;
+}
+
+/* ==========================================================================
+   Full Cover Wrap Spread (Back Cover + Spine + Front Cover)
+   ========================================================================== */
+.cover-wrap-spread-container {
+  display: flex;
+  align-items: stretch;
+  background: #ffffff;
+  border-radius: 4px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+  position: relative;
+}
+
+.cover-wrap-back {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 24px 20px;
+  color: #ffffff;
+}
+
+.cover-wrap-spine {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-left: 1px dashed rgba(255, 255, 255, 0.35);
+  border-right: 1px dashed rgba(255, 255, 255, 0.35);
+  background: rgba(0, 0, 0, 0.15);
+  color: #ffffff;
+  position: relative;
+}
+
+.spine-vertical-text {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  transform: rotate(180deg);
+  font-weight: 700;
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+
+.cover-wrap-front {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 24px 20px;
+  color: #ffffff;
+}
+
+.back-blurb-box {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 6px;
+  padding: 12px 14px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: #f8fafc;
+  margin-bottom: 12px;
+}
+
+.back-footer-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: auto;
+}
+
+.back-barcode-container {
+  background: #ffffff;
+  padding: 6px;
+  border-radius: 4px;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+/* ==========================================================================
+   3D Realistic Book Mockup
+   ========================================================================== */
+.book-3d-mockup-stage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  perspective: 1200px;
+  padding: 40px 20px;
+}
+
+.book-3d-object {
+  position: relative;
+  transform-style: preserve-3d;
+  transform: rotateY(-22deg) rotateX(10deg);
+  transition: transform 0.3s ease;
+  box-shadow: 20px 25px 40px -10px rgba(0, 0, 0, 0.45);
+  border-radius: 2px 6px 6px 2px;
+}
+
+.book-3d-object:hover {
+  transform: rotateY(-14deg) rotateX(6deg) scale(1.02);
+}
+
+.book-3d-pages-stack {
+  position: absolute;
+  right: -16px;
+  top: 4px;
+  bottom: 4px;
+  width: 16px;
+  background: linear-gradient(to right, #e2e8f0 0%, #cbd5e1 50%, #ffffff 100%);
+  border-radius: 0 3px 3px 0;
+  box-shadow: inset 1px 0 2px rgba(0, 0, 0, 0.1);
+}
+
+.book-3d-spine-edge {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 18px;
+  background: linear-gradient(to right, rgba(0,0,0,0.3) 0%, rgba(255,255,255,0.15) 50%, rgba(0,0,0,0.05) 100%);
+  border-radius: 2px 0 0 2px;
+  pointer-events: none;
+}
+
+/* ==========================================================================
+   Device Simulation Frames (Kindle, Tablet, Phone)
+   ========================================================================== */
+.device-frame-kindle {
+  background: #eef2e6;
+  color: #1a1a1a;
+  border: 12px solid #27272a;
+  border-radius: 16px;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+  padding: 16px 24px;
+  position: relative;
+  overflow: hidden;
+}
+
+.kindle-status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 10px;
+  font-weight: 700;
+  color: #52525b;
+  border-bottom: 1px solid #d4d4d8;
+  padding-bottom: 6px;
+  margin-bottom: 14px;
+  font-family: sans-serif;
+}
+
+.kindle-reading-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 10px;
+  color: #52525b;
+  border-top: 1px solid #d4d4d8;
+  padding-top: 6px;
+  margin-top: 14px;
+  font-family: sans-serif;
+}
+
+.device-frame-mobile {
+  background: #ffffff;
+  border: 10px solid #18181b;
+  border-radius: 32px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  padding: 24px 16px 20px;
+  position: relative;
+  max-width: 380px;
+}
+
+.mobile-notch {
+  width: 90px;
+  height: 16px;
+  background: #18181b;
+  border-radius: 0 0 12px 12px;
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.device-frame-tablet {
+  background: #ffffff;
+  border: 14px solid #1e293b;
+  border-radius: 24px;
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.35);
+  padding: 20px;
+  position: relative;
+}
+
+/* Device Mode Switcher Toolbar Pills */
+.device-switcher-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: #e2e8f0;
+  padding: 3px;
+  border-radius: 6px;
+}
+
+.device-pill-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #475569;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.device-pill-btn:hover {
+  color: #0f172a;
+}
+
+.device-pill-btn.active {
+  background: #ffffff;
+  color: #0f766e;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+}
+
