@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Download, Lock, ArrowRight, Maximize2 } from 'lucide-react';
+import { Download, Lock, ArrowRight, Maximize2, BookOpen } from 'lucide-react';
 import type { Project } from '../api';
 import { fetchExportStatus } from '../api';
 import { translations, type Language } from '../i18n';
@@ -106,9 +106,11 @@ export function ExportPanel({
   return (
     <div className="analysis export-panel">
       <div className="export-panel-header">
-        <span className="preview-label connected">{t.bookFormatting}</span>
-        <h3>{t.exportHeading}</h3>
-        <p>{t.exportSubtitle}</p>
+        <div className="export-header-top">
+          <span className="preview-label connected">{t.bookFormatting}</span>
+          <span className="pro-pill-tag">PRO</span>
+        </div>
+        <h3>{lang === 'bn' ? 'বুক গেট-আপ ও প্রকাশনা' : 'Book Formatting & Export'}</h3>
       </div>
 
       {!isPro && (
@@ -121,20 +123,33 @@ export function ExportPanel({
         </div>
       )}
 
-      {/* Prominent Full Studio Launcher Banner */}
-      <div className="studio-launcher-card">
-        <div className="launcher-text">
-          <strong>{lang === 'bn' ? '📖 বুক গেট-আপ ও লাইভ প্রিভিউ' : '📖 Live Book Get-up Studio'}</strong>
-          <span>{lang === 'bn' ? '২-পাতার স্প্রেড, ফন্ট, মার্জিন ও কালার সাজান' : 'Full 2-page spread & layout studio'}</span>
+      {/* Main Studio Launcher Card */}
+      <div className="studio-hero-card">
+        <div className="hero-card-header">
+          <BookOpen size={20} className="hero-icon" />
+          <div>
+            <h4>{lang === 'bn' ? 'বুক গেট-আপ স্টুডিও' : 'Book Get-up Studio'}</h4>
+            <span className="hero-subtext">{lang === 'bn' ? '২-পাতার লাইভ স্প্রেড ও প্রচ্ছদ' : '2-Page Spread & Cover'}</span>
+          </div>
         </div>
+        <p className="hero-card-desc">
+          {lang === 'bn'
+            ? '১-ক্লিক থিম, ফন্ট সাইজ, মার্জিন, ড্রপ ক্যাপ এবং পূর্ণাঙ্গ বই সাজাতে স্টুডিও ওপেন করুন।'
+            : 'Configure 1-click genre themes, margins, drop caps, and front/back matter.'}
+        </p>
         <button
           type="button"
-          className="open-studio-action-btn"
+          className="hero-launch-btn"
           onClick={() => setIsStudioModalOpen(true)}
         >
-          <Maximize2 size={16} />
-          <span>{lang === 'bn' ? 'স্টুডিও খুলুন' : 'Open Studio'}</span>
+          <Maximize2 size={15} />
+          <span>{lang === 'bn' ? 'ফুলস্ক্রিন স্টুডিও খুলুন' : 'Open Fullscreen Studio'}</span>
         </button>
+      </div>
+
+      {/* Quick Downloads Divider */}
+      <div className="quick-export-title-divider">
+        <span>{lang === 'bn' ? 'সরাসরি ফাইল ডাউনলোড' : 'Quick Downloads'}</span>
       </div>
 
       {/* Export Action Buttons */}
@@ -151,7 +166,7 @@ export function ExportPanel({
             disabled={!!busy}
             onClick={() => exportFile(f)}
           >
-            {isPro ? <Download size={16} /> : <Lock size={16} />}
+            {isPro ? <Download size={15} /> : <Lock size={15} />}
             {busy === f ? t.generatingFile : label}
           </button>
         ))}
