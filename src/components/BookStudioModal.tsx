@@ -59,9 +59,7 @@ export function BookStudioModal({
   onTxt?: () => void;
   onHtml?: () => void;
 }) {
-  const [activeTab, setActiveTab] = useState<
-    'themes' | 'layout' | 'toc_pages' | 'chapter_style' | 'imprint' | 'preface' | 'author' | 'cover'
-  >('themes');
+  const [activeTab, setActiveTab] = useState<'layout' | 'styling' | 'meta' | 'cover'>('layout');
   const [busy, setBusy] = useState<string>('');
   const [statusMsg, setStatusMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
@@ -208,69 +206,33 @@ export function BookStudioModal({
         <div className="modal-dual-pane-body">
           {/* Left Controls Pane */}
           <div className="modal-left-controls">
-            {/* Section Tabs */}
+            {/* Section Tabs - 4 Clean, Spacious Primary Tabs */}
             <div className="control-tabs-nav">
-              <button
-                type="button"
-                className={`control-tab-btn ${activeTab === 'themes' ? 'active' : ''}`}
-                onClick={() => setActiveTab('themes')}
-              >
-                <Sparkles size={14} />
-                <span>{lang === 'bn' ? '১-ক্লিক থিম' : 'Themes'}</span>
-              </button>
-
               <button
                 type="button"
                 className={`control-tab-btn ${activeTab === 'layout' ? 'active' : ''}`}
                 onClick={() => setActiveTab('layout')}
               >
                 <Sliders size={14} />
-                <span>{lang === 'bn' ? 'সাইজ ও স্পাইন' : 'Size & Spine'}</span>
+                <span>{lang === 'bn' ? 'লেআউট ও সাইজ' : 'Layout & Size'}</span>
               </button>
 
               <button
                 type="button"
-                className={`control-tab-btn ${activeTab === 'toc_pages' ? 'active' : ''}`}
-                onClick={() => setActiveTab('toc_pages')}
+                className={`control-tab-btn ${activeTab === 'styling' ? 'active' : ''}`}
+                onClick={() => setActiveTab('styling')}
               >
-                <Hash size={14} />
-                <span>{lang === 'bn' ? 'পৃষ্ঠা ও সূচি' : 'Page & TOC'}</span>
+                <Sparkles size={14} />
+                <span>{lang === 'bn' ? 'পৃষ্ঠা ও সূচিপত্র' : 'Pages & Styles'}</span>
               </button>
 
               <button
                 type="button"
-                className={`control-tab-btn ${activeTab === 'chapter_style' ? 'active' : ''}`}
-                onClick={() => setActiveTab('chapter_style')}
-              >
-                <Layers size={14} />
-                <span>{lang === 'bn' ? 'অধ্যায় স্টাইল' : 'Chapter Design'}</span>
-              </button>
-
-              <button
-                type="button"
-                className={`control-tab-btn ${activeTab === 'imprint' ? 'active' : ''}`}
-                onClick={() => setActiveTab('imprint')}
+                className={`control-tab-btn ${activeTab === 'meta' ? 'active' : ''}`}
+                onClick={() => setActiveTab('meta')}
               >
                 <Bookmark size={14} />
-                <span>{lang === 'bn' ? 'ইমপ্রিন্ট' : 'Imprint'}</span>
-              </button>
-
-              <button
-                type="button"
-                className={`control-tab-btn ${activeTab === 'preface' ? 'active' : ''}`}
-                onClick={() => setActiveTab('preface')}
-              >
-                <FileText size={14} />
-                <span>{lang === 'bn' ? 'ভূমিকা' : 'Preface'}</span>
-              </button>
-
-              <button
-                type="button"
-                className={`control-tab-btn ${activeTab === 'author' ? 'active' : ''}`}
-                onClick={() => setActiveTab('author')}
-              >
-                <User size={14} />
-                <span>{lang === 'bn' ? 'লেখক' : 'Author'}</span>
+                <span>{lang === 'bn' ? 'তথ্য ও ভূমিকা' : 'Imprint & Meta'}</span>
               </button>
 
               <button
@@ -285,11 +247,11 @@ export function BookStudioModal({
 
             {/* Tab Contents */}
             <div className="control-scroll-container">
-              {/* 1. 1-CLICK THEMES & STYLES */}
-              {activeTab === 'themes' && (
+              {/* TAB 1: LAYOUT, SIZE, SPINE & TYPOGRAPHY */}
+              {activeTab === 'layout' && (
                 <div className="control-section-panel">
                   <div className="section-divider-title">
-                    <span>{lang === 'bn' ? 'জনপ্রিয় জনরা থিম প্রিসেট' : '1-Click Genre Presets'}</span>
+                    <span>{lang === 'bn' ? 'জনপ্রিয় ১-ক্লিক থিম প্রিসেট' : '1-Click Theme Presets'}</span>
                   </div>
 
                   <div className="theme-card-grid">
@@ -324,115 +286,11 @@ export function BookStudioModal({
                     )}
                   </div>
 
-                  <div className="section-divider-title">
-                    <span>{lang === 'bn' ? 'টাইপোগ্রাফি ও ফন্ট' : 'Typography & Font'}</span>
-                  </div>
-
-                  <div className="form-group">
-                    <label>{lang === 'bn' ? 'বাংলা বইয়ের মূল ফন্ট' : 'Body Bengali Font'}</label>
-                    <select
-                      value={settings.fontFamily}
-                      onChange={(e) => patch({ fontFamily: e.target.value })}
-                    >
-                      <option value="Noto Serif Bengali">Noto Serif Bengali (সর্বাধিক জনপ্রিয় সাহিত্যিক ফন্ট)</option>
-                      <option value="SolaimanLipi">SolaimanLipi (সোলায়মানলিপি - ঐতিহ্যবাহী)</option>
-                      <option value="Kalpurush">Kalpurush (কালপুরুষ - স্পষ্ট ও পরিচ্ছন্ন)</option>
-                      <option value="Tiro Bangla">Tiro Bangla (তিরো বাংলা - ক্লাসিক পাবলিকেশন)</option>
-                      <option value="Hind Siliguri">Hind Siliguri (হিন্দ শিলিগুড়ি - আধুনিক সান্স)</option>
-                    </select>
-                  </div>
-
-                  <div className="grid-2-col">
-                    <div className="form-group">
-                      <label>{lang === 'bn' ? 'ফন্ট সাইজ (Font Size)' : 'Font Size'}</label>
-                      <select
-                        value={settings.fontSize}
-                        onChange={(e) => patch({ fontSize: Number(e.target.value) })}
-                      >
-                        {[10, 10.5, 11, 11.5, 12, 12.5, 13, 14].map((n) => (
-                          <option key={n} value={n}>
-                            {n} pt
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="form-group">
-                      <label>{lang === 'bn' ? 'লাইনের দূরত্ব (Line Height)' : 'Line Height'}</label>
-                      <select
-                        value={settings.lineHeight}
-                        onChange={(e) => patch({ lineHeight: Number(e.target.value) })}
-                      >
-                        {[1.3, 1.4, 1.5, 1.6, 1.7, 1.8].map((n) => (
-                          <option key={n} value={n}>
-                            {n}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-
-                  <div className="form-checkbox">
-                    <input
-                      type="checkbox"
-                      id="dropCapCheck"
-                      checked={settings.dropCap}
-                      onChange={(e) => patch({ dropCap: e.target.checked })}
-                    />
-                    <label htmlFor="dropCapCheck">
-                      {lang === 'bn'
-                        ? 'অধ্যায়ের প্রথম অক্ষরে ড্রপ ক্যাপ (Drop Cap) দিন'
-                        : 'Enable Chapter First-Letter Drop Cap'}
-                    </label>
-                  </div>
-
-                  <div className="section-divider-title">
-                    <span>{lang === 'bn' ? 'উপাদান ও রঙের ফাইন-টিউনিং' : 'Colors & Elements'}</span>
-                  </div>
-
-                  <div className="form-group">
-                    <label>{lang === 'bn' ? 'অধ্যায় শিরোনামের রং' : 'Chapter Title Color'}</label>
-                    <div className="color-picker-row">
-                      <input
-                        type="color"
-                        value={settings.chapterHeadingColor}
-                        onChange={(e) => patch({ chapterHeadingColor: e.target.value })}
-                        className="color-input"
-                      />
-                      <div className="color-preset-chips">
-                        {['#1a56db', '#166534', '#1e3a8a', '#991b1b', '#111827', '#6b21a8'].map((c) => (
-                          <button
-                            type="button"
-                            key={c}
-                            className={`color-chip ${settings.chapterHeadingColor === c ? 'active' : ''}`}
-                            style={{ backgroundColor: c }}
-                            onClick={() => patch({ chapterHeadingColor: c })}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="form-group">
-                    <label>{lang === 'bn' ? 'তথ্য/কলআউট বক্সের থিম' : 'Callout Box Theme'}</label>
-                    <select
-                      value={settings.calloutTheme}
-                      onChange={(e) => patch({ calloutTheme: e.target.value as CalloutTheme })}
-                    >
-                      {Object.entries(CALLOUT_THEMES).map(([k, v]) => (
-                        <option key={k} value={k}>
-                          {v.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              )}
-
-              {/* 2. LAYOUT, TRIM SIZE & SPINE */}
-              {activeTab === 'layout' && (
-                <div className="control-section-panel">
                   {/* Spine & Pages Live Calculator Card */}
+                  <div className="section-divider-title">
+                    <span>{lang === 'bn' ? 'বইয়ের সাইজ ও স্পাইন ক্যালকুলেটর' : 'Book Size & Spine'}</span>
+                  </div>
+
                   <div className="spine-calculator-card">
                     <div className="spine-calc-item">
                       <span className="calc-label">{lang === 'bn' ? 'আনুমানিক পৃষ্ঠা' : 'Est. Pages'}</span>
@@ -502,19 +360,67 @@ export function BookStudioModal({
                     </div>
 
                     <div className="form-group">
-                      <label>{lang === 'bn' ? 'নতুন অধ্যায় শুরুর পাতা' : 'Chapter Start'}</label>
+                      <label>{lang === 'bn' ? 'অধ্যায় শুরুর পাতা' : 'Chapter Start'}</label>
                       <select
                         value={settings.chapterStartSide || 'recto'}
                         onChange={(e) => patch({ chapterStartSide: e.target.value as 'recto' | 'any' })}
                       >
-                        <option value="recto">ডান পাতা (Recto - প্রিমিয়াম পাবলিকেশন)</option>
+                        <option value="recto">ডান পাতা (Recto - প্রিমিয়াম)</option>
                         <option value="any">যেকোনো পাতা (পৃষ্ঠা বাঁচাতে)</option>
                       </select>
                     </div>
                   </div>
 
                   <div className="section-divider-title">
-                    <span>{lang === 'bn' ? 'মার্জিন ও বাইন্ডিং ফাঁকা (Margins mm)' : 'Margins & Spacing'}</span>
+                    <span>{lang === 'bn' ? 'টাইপোগ্রাফি ও ফন্ট' : 'Typography & Font'}</span>
+                  </div>
+
+                  <div className="form-group">
+                    <label>{lang === 'bn' ? 'বাংলা বইয়ের মূল ফন্ট' : 'Body Bengali Font'}</label>
+                    <select
+                      value={settings.fontFamily}
+                      onChange={(e) => patch({ fontFamily: e.target.value })}
+                    >
+                      <option value="Noto Serif Bengali">Noto Serif Bengali (সর্বাধিক জনপ্রিয় সাহিত্যিক ফন্ট)</option>
+                      <option value="SolaimanLipi">SolaimanLipi (সোলায়মানলিপি - ঐতিহ্যবাহী)</option>
+                      <option value="Kalpurush">Kalpurush (কালপুরুষ - স্পষ্ট ও পরিচ্ছন্ন)</option>
+                      <option value="Tiro Bangla">Tiro Bangla (তিরো বাংলা - ক্লাসিক পাবলিকেশন)</option>
+                      <option value="Hind Siliguri">Hind Siliguri (হিন্দ শিলিগুড়ি - আধুনিক সান্স)</option>
+                    </select>
+                  </div>
+
+                  <div className="grid-2-col">
+                    <div className="form-group">
+                      <label>{lang === 'bn' ? 'ফন্ট সাইজ (Font Size)' : 'Font Size'}</label>
+                      <select
+                        value={settings.fontSize}
+                        onChange={(e) => patch({ fontSize: Number(e.target.value) })}
+                      >
+                        {[10, 10.5, 11, 11.5, 12, 12.5, 13, 14].map((n) => (
+                          <option key={n} value={n}>
+                            {n} pt
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="form-group">
+                      <label>{lang === 'bn' ? 'লাইনের দূরত্ব (Line Height)' : 'Line Height'}</label>
+                      <select
+                        value={settings.lineHeight}
+                        onChange={(e) => patch({ lineHeight: Number(e.target.value) })}
+                      >
+                        {[1.3, 1.4, 1.5, 1.6, 1.7, 1.8].map((n) => (
+                          <option key={n} value={n}>
+                            {n}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="section-divider-title">
+                    <span>{lang === 'bn' ? 'মার্জিন ও বাইন্ডিং স্পেসিং (Margins mm)' : 'Margins & Spacing'}</span>
                   </div>
 
                   <div className="grid-2-col">
@@ -533,7 +439,7 @@ export function BookStudioModal({
                     </div>
 
                     <div className="form-group">
-                      <label>{lang === 'bn' ? 'বাইরের মার্জিন (Outer Margin)' : 'Outer Margin'}</label>
+                      <label>{lang === 'bn' ? 'বাইরের মার্জিন (Outer)' : 'Outer Margin'}</label>
                       <select
                         value={settings.marginOuterMm}
                         onChange={(e) => patch({ marginOuterMm: Number(e.target.value) })}
@@ -577,7 +483,7 @@ export function BookStudioModal({
 
                   <div className="grid-2-col">
                     <div className="form-group">
-                      <label>{lang === 'bn' ? 'প্যারাগ্রাফ শুরুর ইনডেন্ট' : 'Paragraph Indent'}</label>
+                      <label>{lang === 'bn' ? 'প্যারাগ্রাফ ইনডেন্ট' : 'Paragraph Indent'}</label>
                       <select
                         value={settings.firstLineIndentMm}
                         onChange={(e) => patch({ firstLineIndentMm: Number(e.target.value) })}
@@ -591,15 +497,13 @@ export function BookStudioModal({
                     </div>
 
                     <div className="form-group">
-                      <label>{lang === 'bn' ? 'রানিং হেডার' : 'Running Header'}</label>
+                      <label>{lang === 'bn' ? 'টেক্সট অ্যালাইনমেন্ট' : 'Text Alignment'}</label>
                       <select
-                        value={settings.runningHeader}
-                        onChange={(e) => patch({ runningHeader: e.target.value as BookSettings['runningHeader'] })}
+                        value={settings.textAlign || 'justify'}
+                        onChange={(e) => patch({ textAlign: e.target.value as 'justify' | 'left' })}
                       >
-                        <option value="split">{lang === 'bn' ? 'বই ও অধ্যায় শিরোনাম (Split)' : 'Split (Title/Chapter)'}</option>
-                        <option value="title">{lang === 'bn' ? 'কেবল বইয়ের নাম' : 'Book Title Only'}</option>
-                        <option value="author">{lang === 'bn' ? 'লেখকের নাম' : 'Author Only'}</option>
-                        <option value="none">{lang === 'bn' ? 'হেডার নেই' : 'None'}</option>
+                        <option value="justify">জাস্টিফাইড (উভয় পাশ সমান)</option>
+                        <option value="left">বাম দিকে সারিবদ্ধ (Left-aligned)</option>
                       </select>
                     </div>
                   </div>
@@ -618,8 +522,8 @@ export function BookStudioModal({
                 </div>
               )}
 
-              {/* 3. PAGE NUMBERING & TABLE OF CONTENTS */}
-              {activeTab === 'toc_pages' && (
+              {/* TAB 2: PAGE NUMBERING, TOC PRESETS & CHAPTER STYLING */}
+              {activeTab === 'styling' && (
                 <div className="control-section-panel">
                   <div className="section-divider-title">
                     <span>{lang === 'bn' ? 'পৃষ্ঠা নম্বর অবস্থান ও বিন্যাস' : 'Page Numbering Placement'}</span>
@@ -647,7 +551,7 @@ export function BookStudioModal({
                   </div>
 
                   <div className="section-divider-title">
-                    <span>{lang === 'bn' ? 'পৃষ্ঠা নম্বরের স্টাইল ও অলঙ্করণ' : 'Page Number Style & Motif'}</span>
+                    <span>{lang === 'bn' ? 'পৃষ্ঠা নম্বরের স্টাইল ও অলঙ্করণ' : 'Page Number Style'}</span>
                   </div>
 
                   <div className="preset-card-grid">
@@ -683,7 +587,7 @@ export function BookStudioModal({
                   </div>
 
                   <div className="section-divider-title">
-                    <span>{lang === 'bn' ? 'সূচিপত্র ডিজাইন প্রিসেট (5 Unique TOC Styles)' : '5 Unique TOC Presets'}</span>
+                    <span>{lang === 'bn' ? '৫টি সূচিপত্র ডিজাইন প্রিসেট (TOC Styles)' : '5 Unique TOC Presets'}</span>
                   </div>
 
                   <div className="preset-card-grid">
@@ -718,12 +622,7 @@ export function BookStudioModal({
                       {lang === 'bn' ? 'বইয়ের শুরুতে স্বয়ংক্রিয় সূচিপত্র যোগ করুন (Include TOC)' : 'Include Table of Contents in Book'}
                     </label>
                   </div>
-                </div>
-              )}
 
-              {/* 4. CHAPTER OPENER & DECOR STYLES */}
-              {activeTab === 'chapter_style' && (
-                <div className="control-section-panel">
                   <div className="section-divider-title">
                     <span>{lang === 'bn' ? 'অধ্যায় শুরুর হেডার ডিজাইন (Chapter Opener)' : 'Chapter Opener Styles'}</span>
                   </div>
@@ -750,35 +649,46 @@ export function BookStudioModal({
                   </div>
 
                   <div className="section-divider-title">
-                    <span>{lang === 'bn' ? 'অলঙ্করণ ও টাইপোগ্রাফিক ইফেক্ট' : 'Typography Effects'}</span>
+                    <span>{lang === 'bn' ? 'অলঙ্করণ, রানিং হেডার ও রং' : 'Decorations & Colors'}</span>
                   </div>
 
-                  <div className="form-checkbox">
-                    <input
-                      type="checkbox"
-                      id="dropCapStyle"
-                      checked={settings.dropCap}
-                      onChange={(e) => patch({ dropCap: e.target.checked })}
-                    />
-                    <label htmlFor="dropCapStyle">
-                      {lang === 'bn' ? 'অধ্যায়ের প্রথম অক্ষরে ড্রপ ক্যাপ (Drop Cap) দিন' : 'Enable Chapter Drop Cap'}
-                    </label>
+                  <div className="grid-2-col">
+                    <div className="form-checkbox">
+                      <input
+                        type="checkbox"
+                        id="dropCapStyle"
+                        checked={settings.dropCap}
+                        onChange={(e) => patch({ dropCap: e.target.checked })}
+                      />
+                      <label htmlFor="dropCapStyle">
+                        {lang === 'bn' ? 'ড্রপ ক্যাপ (Drop Cap)' : 'Drop Cap'}
+                      </label>
+                    </div>
+
+                    <div className="form-checkbox">
+                      <input
+                        type="checkbox"
+                        id="decorMotif"
+                        checked={settings.showChapterDecor}
+                        onChange={(e) => patch({ showChapterDecor: e.target.checked })}
+                      />
+                      <label htmlFor="decorMotif">
+                        {lang === 'bn' ? 'মোটিফ (❖ — ❖)' : 'Motif'}
+                      </label>
+                    </div>
                   </div>
 
-                  <div className="form-checkbox">
-                    <input
-                      type="checkbox"
-                      id="decorMotif"
-                      checked={settings.showChapterDecor}
-                      onChange={(e) => patch({ showChapterDecor: e.target.checked })}
-                    />
-                    <label htmlFor="decorMotif">
-                      {lang === 'bn' ? 'অধ্যায় ও সেকশন বিভাজনে অর্নামেন্ট (❖ — ❖) দেখান' : 'Show Section Ornaments'}
-                    </label>
-                  </div>
-
-                  <div className="section-divider-title">
-                    <span>{lang === 'bn' ? 'শিরোনামের রং কাস্টমাইজেশন' : 'Heading Color Schemes'}</span>
+                  <div className="form-group">
+                    <label>{lang === 'bn' ? 'রানিং হেডার' : 'Running Header'}</label>
+                    <select
+                      value={settings.runningHeader}
+                      onChange={(e) => patch({ runningHeader: e.target.value as BookSettings['runningHeader'] })}
+                    >
+                      <option value="split">{lang === 'bn' ? 'বই ও অধ্যায় শিরোনাম (Split)' : 'Split (Title/Chapter)'}</option>
+                      <option value="title">{lang === 'bn' ? 'কেবল বইয়ের নাম' : 'Book Title Only'}</option>
+                      <option value="author">{lang === 'bn' ? 'লেখকের নাম' : 'Author Only'}</option>
+                      <option value="none">{lang === 'bn' ? 'হেডার নেই' : 'None'}</option>
+                    </select>
                   </div>
 
                   <div className="form-group">
@@ -828,33 +738,28 @@ export function BookStudioModal({
                   </div>
 
                   <div className="form-group">
-                    <label>{lang === 'bn' ? 'উদ্ধৃতি (Quote) বর্ডারের রং' : 'Quote Border Color'}</label>
-                    <div className="color-picker-row">
-                      <input
-                        type="color"
-                        value={settings.quoteBorderColor}
-                        onChange={(e) => patch({ quoteBorderColor: e.target.value })}
-                        className="color-input"
-                      />
-                      <div className="color-preset-chips">
-                        {['#64748b', '#059669', '#2563eb', '#dc2626', '#d97706', '#9333ea'].map((c) => (
-                          <button
-                            type="button"
-                            key={c}
-                            className={`color-chip ${settings.quoteBorderColor === c ? 'active' : ''}`}
-                            style={{ backgroundColor: c }}
-                            onClick={() => patch({ quoteBorderColor: c })}
-                          />
-                        ))}
-                      </div>
-                    </div>
+                    <label>{lang === 'bn' ? 'তথ্য/কলআউট বক্সের থিম' : 'Callout Box Theme'}</label>
+                    <select
+                      value={settings.calloutTheme}
+                      onChange={(e) => patch({ calloutTheme: e.target.value as CalloutTheme })}
+                    >
+                      {Object.entries(CALLOUT_THEMES).map(([k, v]) => (
+                        <option key={k} value={k}>
+                          {v.label}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
               )}
 
-              {/* 3. IMPRINT, RIGHTS & CIP */}
-              {activeTab === 'imprint' && (
+              {/* TAB 3: IMPRINT, PREFACE & AUTHOR DETAILS */}
+              {activeTab === 'meta' && (
                 <div className="control-section-panel">
+                  <div className="section-divider-title">
+                    <span>{lang === 'bn' ? 'ইমপ্রিন্ট ও প্রকাশনা স্বত্ব' : 'Imprint & Rights'}</span>
+                  </div>
+
                   <div className="form-group">
                     <label>{lang === 'bn' ? 'প্রকাশনীর নাম' : 'Publisher Name'}</label>
                     <input
@@ -948,25 +853,12 @@ export function BookStudioModal({
                     />
                   </div>
 
-                  <div className="form-checkbox">
-                    <input
-                      type="checkbox"
-                      id="incToc"
-                      checked={settings.includeToc}
-                      onChange={(e) => patch({ includeToc: e.target.checked })}
-                    />
-                    <label htmlFor="incToc">
-                      {lang === 'bn' ? 'বইয়ের শুরুতে স্বয়ংক্রিয় সূচিপত্র যোগ করুন (TOC)' : 'Include Automated Table of Contents'}
-                    </label>
+                  <div className="section-divider-title">
+                    <span>{lang === 'bn' ? 'ভূমিকা বা নিবেদন (Preface)' : 'Author Preface'}</span>
                   </div>
-                </div>
-              )}
 
-              {/* 4. PREFACE & FOREWORD */}
-              {activeTab === 'preface' && (
-                <div className="control-section-panel">
                   <div className="form-group">
-                    <label>{lang === 'bn' ? 'ভূমিকার শিরোনাম (Preface Heading)' : 'Preface Heading'}</label>
+                    <label>{lang === 'bn' ? 'ভূমিকার শিরোনাম (Heading)' : 'Heading'}</label>
                     <input
                       type="text"
                       value={settings.prefaceTitle || (lang === 'bn' ? 'লেখকের কথা' : "Author's Note")}
@@ -976,9 +868,9 @@ export function BookStudioModal({
                   </div>
 
                   <div className="form-group">
-                    <label>{lang === 'bn' ? 'ভূমিকা বা নিবেদনের বিবরণ' : 'Preface Text'}</label>
+                    <label>{lang === 'bn' ? 'ভূমিকার মূলপাঠ' : 'Preface Text'}</label>
                     <textarea
-                      rows={12}
+                      rows={6}
                       value={settings.prefaceText || ''}
                       onChange={(e) => patch({ prefaceText: e.target.value })}
                       placeholder={
@@ -988,14 +880,13 @@ export function BookStudioModal({
                       }
                     />
                   </div>
-                </div>
-              )}
 
-              {/* 5. AUTHOR BIO & OTHER BOOKS */}
-              {activeTab === 'author' && (
-                <div className="control-section-panel">
+                  <div className="section-divider-title">
+                    <span>{lang === 'bn' ? 'লেখক পরিচিতি ও সাহিত্যকর্ম' : 'Author Biography'}</span>
+                  </div>
+
                   <div className="form-group">
-                    <label>{lang === 'bn' ? 'লেখকের নাম' : 'Author Name'}</label>
+                    <label>{lang === 'bn' ? 'লেখকের পুরো নাম' : 'Author Name'}</label>
                     <input
                       type="text"
                       value={settings.author}
@@ -1005,23 +896,23 @@ export function BookStudioModal({
                   </div>
 
                   <div className="form-group">
-                    <label>{lang === 'bn' ? 'লেখক পরিচিতি ও কর্মজীবন (Author Biography)' : 'Author Biography'}</label>
+                    <label>{lang === 'bn' ? 'সংক্ষিপ্ত আত্মজীবনী ও পেশা' : 'Biography'}</label>
                     <textarea
-                      rows={8}
+                      rows={5}
                       value={settings.authorBio || ''}
                       onChange={(e) => patch({ authorBio: e.target.value })}
                       placeholder={
                         lang === 'bn'
-                          ? 'লেখকের শিক্ষাজীবন, পেশা, সাহিত্যচর্চা ও অন্যান্য পরিচিতি...'
-                          : 'Short biography of the author, education, and career...'
+                          ? 'লেখকের শিক্ষাজীবন, পেশা, সাহিত্যচর্চা ও অন্যান্য বিবরণ...'
+                          : 'Short biography of the author...'
                       }
                     />
                   </div>
 
                   <div className="form-group">
-                    <label>{lang === 'bn' ? 'লেখকের অন্যান্য প্রকাশিত বই (Other Works)' : 'Other Published Books'}</label>
+                    <label>{lang === 'bn' ? 'লেখকের অন্যান্য প্রকাশিত বই' : 'Other Published Books'}</label>
                     <textarea
-                      rows={5}
+                      rows={4}
                       value={settings.otherBooks || ''}
                       onChange={(e) => patch({ otherBooks: e.target.value })}
                       placeholder={
@@ -1034,9 +925,13 @@ export function BookStudioModal({
                 </div>
               )}
 
-              {/* 6. COVER & 3D MOCKUP */}
+              {/* TAB 4: COVER & PROCHCHHOD */}
               {activeTab === 'cover' && (
                 <div className="control-section-panel">
+                  <div className="section-divider-title">
+                    <span>{lang === 'bn' ? 'প্রচ্ছদ ও সাবটাইটেল' : 'Cover Subtitle'}</span>
+                  </div>
+
                   <div className="form-group">
                     <label>{lang === 'bn' ? 'প্রচ্ছদের সাবটাইটেল' : 'Cover Subtitle'}</label>
                     <input
