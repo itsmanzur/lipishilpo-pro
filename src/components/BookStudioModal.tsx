@@ -1316,13 +1316,14 @@ export function BookStudioModal({
 
                       {/* Live SVG Barcode Preview in sidebar */}
                       <div style={{ marginTop: '8px', textAlign: 'center' }}>
-                        <div
-                          dangerouslySetInnerHTML={{
-                            __html: generateEan13Svg(
+                        <img
+                          alt="EAN-13"
+                          src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(
+                            generateEan13Svg(
                               settings.barcodeNumber || settings.isbn || '9789849123456',
-                              settings.coverPrice || settings.price || '৳ ৩৫০'
+                              settings.coverPrice || settings.price || '৳ ৩৫০',
                             ),
-                          }}
+                          )}`}
                         />
                         <span style={{ fontSize: '11px', color: '#64748b', display: 'block', marginTop: '4px' }}>
                           ✓ প্রেসে সরাসরি স্ক্যানযোগ্য হাই-রেজোলিউশন ভেক্টর EAN-13 বারকোড

@@ -503,8 +503,32 @@ export function calculateEan13Checksum(raw12: string): number {
   return mod === 0 ? 0 : 10 - mod;
 }
 
-export function generateEan13Svg(rawInput: string, priceTag?: string): string {
-  const clean = rawInput.replace(/\D/g, '');
+function escapeSvgText(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
+export type Ean13Layout = {
+  binary: string;
+  full13: string;
+  first: string;
+  leftText: string;
+  rightText: string;
+  price: string;
+  barW: number;
+  startX: number;
+  hMain: number;
+  hGuard: number;
+  totalW: number;
+  totalH: number;
+};
+
+export function layoutEan13(rawInput: string, priceTag?: string): Ean13Layout {
+  const clean = String(rawInput || '').replace(/\D/g, '');
   let full13 = clean;
   if (clean.length === 12) {
     full13 = clean + calculateEan13Checksum(clean);
@@ -562,28 +586,48 @@ export function generateEan13Svg(rawInput: string, priceTag?: string): string {
   const hMain = 38;
   const hGuard = 44;
   const startX = 16;
+  const price = String(priceTag || '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 40);
   const totalW = startX + binary.length * barW + 16;
-  const totalH = hGuard + 18 + (priceTag ? 14 : 0);
+  const totalH = hGuard + 18 + (price ? 14 : 0);
 
+  return {
+    binary,
+    full13,
+    first: String(first),
+    leftText: full13.slice(1, 7),
+    rightText: full13.slice(7),
+    price,
+    barW,
+    startX,
+    hMain,
+    hGuard,
+    totalW,
+    totalH,
+  };
+}
+
+export function generateEan13Svg(rawInput: string, priceTag?: string): string {
+  const layout = layoutEan13(rawInput, priceTag);
   let rects = '';
-  for (let i = 0; i < binary.length; i++) {
-    if (binary[i] === '1') {
+  for (let i = 0; i < layout.binary.length; i++) {
+    if (layout.binary[i] === '1') {
       const isGuard = i < 3 || (i >= 45 && i < 50) || i >= 92;
-      const h = isGuard ? hGuard : hMain;
-      rects += `<rect x="${(startX + i * barW).toFixed(2)}" y="6" width="${barW.toFixed(2)}" height="${h}" fill="#111827" />`;
+      const h = isGuard ? layout.hGuard : layout.hMain;
+      rects += `<rect x="${(layout.startX + i * layout.barW).toFixed(2)}" y="6" width="${layout.barW.toFixed(2)}" height="${h}" fill="#111827" />`;
     }
   }
 
-  const leftText = full13.slice(1, 7);
-  const rightText = full13.slice(7);
-
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${totalW} ${totalH}" width="${totalW}" height="${totalH}" style="background:#ffffff; border-radius:4px; padding:4px; box-shadow:0 1px 3px rgba(0,0,0,0.1);">
-    <rect width="${totalW}" height="${totalH}" fill="#ffffff"/>
+  const safePrice = escapeSvgText(layout.price);
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${layout.totalW} ${layout.totalH}" width="${layout.totalW}" height="${layout.totalH}" style="background:#ffffff; border-radius:4px; padding:4px; box-shadow:0 1px 3px rgba(0,0,0,0.1);">
+    <rect width="${layout.totalW}" height="${layout.totalH}" fill="#ffffff"/>
     ${rects}
-    <text x="${startX - 7}" y="42" font-family="monospace" font-size="9" font-weight="bold" fill="#111827">${first}</text>
-    <text x="${startX + 18}" y="${hGuard + 10}" font-family="monospace" font-size="8.5" font-weight="bold" fill="#111827" letter-spacing="1.5">${leftText}</text>
-    <text x="${startX + 78}" y="${hGuard + 10}" font-family="monospace" font-size="8.5" font-weight="bold" fill="#111827" letter-spacing="1.5">${rightText}</text>
-    ${priceTag ? `<text x="${totalW / 2}" y="${totalH - 3}" font-family="sans-serif" font-size="8" font-weight="700" text-anchor="middle" fill="#475569">মূল্য: ${priceTag}</text>` : ''}
+    <text x="${layout.startX - 7}" y="42" font-family="monospace" font-size="9" font-weight="bold" fill="#111827">${escapeSvgText(layout.first)}</text>
+    <text x="${layout.startX + 18}" y="${layout.hGuard + 10}" font-family="monospace" font-size="8.5" font-weight="bold" fill="#111827" letter-spacing="1.5">${escapeSvgText(layout.leftText)}</text>
+    <text x="${layout.startX + 78}" y="${layout.hGuard + 10}" font-family="monospace" font-size="8.5" font-weight="bold" fill="#111827" letter-spacing="1.5">${escapeSvgText(layout.rightText)}</text>
+    ${layout.price ? `<text x="${layout.totalW / 2}" y="${layout.totalH - 3}" font-family="sans-serif" font-size="8" font-weight="700" text-anchor="middle" fill="#475569">মূল্য: ${safePrice}</text>` : ''}
   </svg>`;
 
   return svg;
@@ -787,7 +831,7 @@ export function normalizeSettings(raw: Partial<BookSettings> & { marginMm?: numb
     backCoverBlurb: raw.backCoverBlurb ?? defaultBookSettings.backCoverBlurb,
     showBarcode: raw.showBarcode ?? defaultBookSettings.showBarcode,
     barcodeNumber: raw.barcodeNumber || defaultBookSettings.barcodeNumber,
-    coverPrice: raw.coverPrice || defaultBookSettings.coverPrice,
+    coverPrice: (raw.coverPrice || defaultBookSettings.coverPrice).slice(0, 40),
     coverFinish: raw.coverFinish || defaultBookSettings.coverFinish,
     spineText: raw.spineText || defaultBookSettings.spineText,
     halfTitle: raw.halfTitle || defaultBookSettings.halfTitle,

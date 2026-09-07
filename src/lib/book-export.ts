@@ -5,12 +5,16 @@ import type { Content, TDocumentDefinitions } from 'pdfmake/interfaces';
 import {
   type BookSettings,
   CALLOUT_THEMES,
+  calculateSpineMm,
   contentMarginsPt,
   defaultBookSettings,
+  estimatePageCount,
   formatStyledPageNumber,
   hasImprint,
+  layoutEan13,
   mmToPt,
   mmToTwip,
+  SCENE_BREAK_MOTIFS,
   sheetExtraMm,
   sheetSizePt,
   trimSizeMm,
@@ -123,7 +127,48 @@ function cropMarkCanvas(s: BookSettings) {
 }
 
 function frontMatterCount(s: BookSettings) {
-  return 1 + (hasImprint(s) ? 1 : 0) + (s.dedication.trim() ? 1 : 0) + (s.includeToc ? 1 : 0);
+  return (
+    1 +
+    (s.halfTitle.trim() ? 1 : 0) +
+    (hasImprint(s) ? 1 : 0) +
+    (s.dedication.trim() ? 1 : 0) +
+    (s.epigraphText.trim() ? 1 : 0) +
+    (s.prefaceText.trim() ? 1 : 0) +
+    (s.includeToc ? 1 : 0)
+  );
+}
+
+function matterParagraphs(
+  text: string,
+  s: BookSettings,
+  extras?: { italics?: boolean; alignment?: 'center' | 'justify' | 'left' },
+): Content[] {
+  return paragraphs(text)
+    .map((p) => p.trim())
+    .filter(Boolean)
+    .map((p) => ({
+      text: mixedText(p),
+      fontSize: s.fontSize,
+      italics: extras?.italics,
+      alignment: extras?.alignment || s.textAlign || 'justify',
+      margin: [0, 0, 0, 8] as [number, number, number, number],
+    }));
+}
+
+function matterSection(title: string, body: string, s: BookSettings): Content {
+  return {
+    stack: [
+      {
+        text: mixedText(title),
+        fontSize: 18,
+        bold: true,
+        alignment: 'center',
+        margin: [0, 24, 0, 18],
+      },
+      ...matterParagraphs(body, s),
+    ],
+    pageBreak: 'before',
+  };
 }
 
 export function pdfDefinition(project: Project, s: BookSettings): TDocumentDefinitions {
@@ -131,12 +176,22 @@ export function pdfDefinition(project: Project, s: BookSettings): TDocumentDefin
   validateSettings(s);
   const english = project.language === 'English';
   const indent = mmToPt(s.firstLineIndentMm);
-  const content: Content[] = [
+  const content: Content[] = [];
+  if (s.halfTitle.trim()) {
+    content.push({
+      text: mixedText(s.halfTitle),
+      fontSize: 18,
+      alignment: 'center',
+      margin: [0, 160, 0, 0],
+    });
+  }
+  content.push(
     {
       text: mixedText(project.title || 'পাণ্ডুলিপি'),
       fontSize: 28,
       bold: true,
       alignment: 'center',
+      ...(s.halfTitle.trim() ? { pageBreak: 'before' as const } : {}),
       margin: [0, 90, 0, 25],
     },
     {
@@ -145,7 +200,7 @@ export function pdfDefinition(project: Project, s: BookSettings): TDocumentDefin
       fontSize: 16,
       margin: [0, 0, 0, 12],
     },
-  ];
+  );
   if (s.coverSubtitle.trim()) {
     content.push({
       text: mixedText(s.coverSubtitle),
@@ -184,6 +239,33 @@ export function pdfDefinition(project: Project, s: BookSettings): TDocumentDefin
       pageBreak: 'before',
       margin: [20, 120, 20, 0],
     });
+  }
+
+  if (s.epigraphText.trim()) {
+    content.push({
+      stack: [
+        {
+          text: mixedText(`“${s.epigraphText}”`),
+          italics: true,
+          alignment: 'center',
+          fontSize: s.fontSize,
+          margin: [24, 80, 24, 10],
+        },
+        ...(s.epigraphSource.trim()
+          ? [{
+              text: mixedText(`— ${s.epigraphSource}`),
+              alignment: 'center' as const,
+              fontSize: 11,
+              color: '#555555',
+            }]
+          : []),
+      ],
+      pageBreak: 'before',
+    });
+  }
+
+  if (s.prefaceText.trim()) {
+    content.push(matterSection(s.prefaceTitle.trim() || (english ? 'Preface' : 'ভূমিকা'), s.prefaceText, s));
   }
 
   if (s.includeToc) {
@@ -492,6 +574,19 @@ export function pdfDefinition(project: Project, s: BookSettings): TDocumentDefin
     }
   });
 
+  if (s.acknowledgement.trim()) {
+    content.push(matterSection(english ? 'Acknowledgements' : 'কৃতজ্ঞতা স্বীকার', s.acknowledgement, s));
+  }
+  if (s.glossary.trim()) {
+    content.push(matterSection(english ? 'Glossary' : 'শব্দকোষ', s.glossary, s));
+  }
+  if (s.authorBio.trim()) {
+    content.push(matterSection(english ? 'About the Author' : 'লেখক পরিচিতি', s.authorBio, s));
+  }
+  if (s.otherBooks.trim()) {
+    content.push(matterSection(english ? 'Also by the Author' : 'লেখকের অন্যান্য বই', s.otherBooks, s));
+  }
+
   const skipHeaderUntil = frontMatterCount(s);
   const marks = s.includeCropMarks ? cropMarkCanvas(s) : [];
 
@@ -649,6 +744,58 @@ export async function makePdf(
   });
 }
 
+function wrapCropMarks(width: number, height: number, extra: number, bleed: number) {
+  const trimX = extra;
+  const trimY = extra;
+  const trimW = width - extra * 2;
+  const trimH = height - extra * 2;
+  const mark = 10;
+  const color = '#222';
+  const lines: number[][] = [
+    [trimX, 2, trimX, 2 + mark],
+    [trimX + trimW, 2, trimX + trimW, 2 + mark],
+    [trimX, height - 2 - mark, trimX, height - 2],
+    [trimX + trimW, height - 2 - mark, trimX + trimW, height - 2],
+    [2, trimY, 2 + mark, trimY],
+    [width - 2 - mark, trimY, width - 2, trimY],
+    [2, trimY + trimH, 2 + mark, trimY + trimH],
+    [width - 2 - mark, trimY + trimH, width - 2, trimY + trimH],
+  ];
+  if (bleed > 0.5) {
+    lines.push(
+      [extra - bleed, 2, extra - bleed, 2 + mark * 0.6],
+      [width - (extra - bleed), 2, width - (extra - bleed), 2 + mark * 0.6],
+    );
+  }
+  return lines.map(([x1, y1, x2, y2]) => ({
+    type: 'line' as const,
+    x1, y1, x2, y2,
+    lineWidth: 0.6,
+    lineColor: color,
+  }));
+}
+
+function ean13Canvas(priceIsbn: { isbn: string; price: string }, scale = 0.72) {
+  const layout = layoutEan13(priceIsbn.isbn, priceIsbn.price);
+  const rects: { type: 'rect'; x: number; y: number; w: number; h: number; color: string }[] = [
+    { type: 'rect', x: 0, y: 0, w: layout.totalW * scale, h: (layout.hGuard + 8) * scale, color: '#ffffff' },
+  ];
+  for (let i = 0; i < layout.binary.length; i++) {
+    if (layout.binary[i] !== '1') continue;
+    const isGuard = i < 3 || (i >= 45 && i < 50) || i >= 92;
+    const h = (isGuard ? layout.hGuard : layout.hMain) * scale * 0.72;
+    rects.push({
+      type: 'rect',
+      x: (layout.startX + i * layout.barW) * scale,
+      y: 4,
+      w: layout.barW * scale,
+      h,
+      color: '#111827',
+    });
+  }
+  return { layout, canvas: rects, width: layout.totalW * scale };
+}
+
 export async function makeCoverPdf(
   project: Project,
   s: BookSettings,
@@ -656,50 +803,180 @@ export async function makeCoverPdf(
 ): Promise<Blob> {
   const pdfMake = (await import('pdfmake/build/pdfmake')).default;
   const { fontMap, vfs } = pdfFonts(fonts);
-  const sheet = sheetSizePt(s);
+  const english = project.language === 'English';
+  const trim = trimSizeMm(s);
+  const totalChars = project.chapters.reduce((n, c) => n + (c.text?.length || 0), 0);
+  const spineMm = calculateSpineMm(estimatePageCount(totalChars, s), s.paperGsm);
+  const extraMm = sheetExtraMm(s);
+  const bleedPt = mmToPt(s.bleedMm || 0);
+  const extraPt = mmToPt(extraMm);
+  const backW = mmToPt(trim.w);
+  const spineW = mmToPt(Math.max(4, spineMm));
+  const frontW = mmToPt(trim.w);
+  const pageW = extraPt * 2 + backW + spineW + frontW;
+  const pageH = extraPt * 2 + mmToPt(trim.h);
   const rgb = hexToRgb(s.coverColor);
+  const cream = '#f4efe4';
+  const muted = '#d9c9a8';
+  const pad = mmToPt(14);
+  const motif = SCENE_BREAK_MOTIFS[s.sceneBreakMotif || 'motifClassic']?.symbol || '❖ — ❖ — ❖';
+  const spineLabel = (s.spineText || project.title || '').trim().slice(0, 48);
+  const barcodeSrc = (s.barcodeNumber || s.isbn || '').trim();
+  const priceTag = (s.coverPrice || s.price || '').trim();
+  const barcode = s.showBarcode && barcodeSrc
+    ? ean13Canvas({ isbn: barcodeSrc, price: priceTag })
+    : null;
+
+  const backStack: Content[] = [];
+  if (s.backCoverBlurb.trim()) {
+    backStack.push({
+      text: mixedText(s.backCoverBlurb),
+      fontSize: Math.max(9, s.fontSize - 2),
+      color: cream,
+      margin: [0, 0, 0, 12],
+    });
+  }
+  if (s.authorBio.trim()) {
+    backStack.push({
+      text: mixedText(s.authorBio.slice(0, 420)),
+      fontSize: 8.5,
+      color: muted,
+      margin: [0, 0, 0, 10],
+    });
+  }
+  if (s.publisher.trim()) {
+    backStack.push({
+      text: mixedText(s.publisher),
+      fontSize: 9,
+      bold: true,
+      color: cream,
+      margin: [0, 8, 0, 4],
+    });
+  }
+  if (priceTag) {
+    backStack.push({
+      text: mixedText(english ? `Price: ${priceTag}` : `মূল্য: ${priceTag}`),
+      fontSize: 10,
+      bold: true,
+      color: cream,
+      margin: [0, 0, 0, 8],
+    });
+  }
+  if (barcode) {
+    backStack.push({
+      canvas: barcode.canvas,
+      margin: [0, 4, 0, 4],
+    });
+    backStack.push({
+      text: barcode.layout.full13,
+      fontSize: 7,
+      color: cream,
+      margin: [0, 0, 0, 2],
+    });
+  }
+
+  const frontStack: Content[] = [
+    {
+      text: mixedText(project.title || (english ? 'Untitled' : 'পাণ্ডুলিপি')),
+      fontSize: 26,
+      bold: true,
+      alignment: 'center',
+      color: cream,
+      margin: [4, 70, 4, 12],
+    },
+  ];
+  if (s.coverSubtitle.trim()) {
+    frontStack.push({
+      text: mixedText(s.coverSubtitle),
+      fontSize: 12,
+      alignment: 'center',
+      color: muted,
+      margin: [8, 0, 8, 14],
+    });
+  }
+  if (s.showChapterDecor) {
+    frontStack.push({
+      text: mixedText(motif),
+      fontSize: 10,
+      alignment: 'center',
+      color: muted,
+      margin: [0, 0, 0, 16],
+    });
+  }
+  if (s.author.trim()) {
+    frontStack.push({
+      text: mixedText(s.author),
+      fontSize: 14,
+      alignment: 'center',
+      color: cream,
+      margin: [0, 24, 0, 6],
+    });
+  }
+  if (s.publisher.trim()) {
+    frontStack.push({
+      text: mixedText(s.publisher),
+      fontSize: 10,
+      alignment: 'center',
+      color: muted,
+    });
+  }
+
+  const marks = s.includeCropMarks ? wrapCropMarks(pageW, pageH, extraPt, bleedPt) : [];
   const def: TDocumentDefinitions = {
-    pageSize: sheet,
-    pageMargins: [36, 48, 36, 48],
-    defaultStyle: { font: 'NotoBengali', color: '#f4efe4' },
+    pageSize: { width: pageW, height: pageH },
+    pageMargins: [extraPt, extraPt, extraPt, extraPt],
+    defaultStyle: { font: 'NotoBengali', color: cream },
     background: () => ({
       canvas: [
         {
           type: 'rect',
           x: 0,
           y: 0,
-          w: sheet.width,
-          h: sheet.height,
+          w: pageW,
+          h: pageH,
           color: `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`,
         },
+        ...(marks.length ? marks : []),
       ],
     }),
-    content: ([
+    content: [
       {
-        text: mixedText(project.title || 'পাণ্ডুলিপি'),
-        fontSize: 32,
-        bold: true,
-        alignment: 'center',
-        margin: [10, 80, 10, 20] as [number, number, number, number],
-        color: '#f4efe4',
+        columns: [
+          {
+            width: backW,
+            stack: backStack,
+            margin: [pad, pad, pad * 0.6, pad],
+          },
+          {
+            width: spineW,
+            stack: [
+              {
+                text: mixedText(Array.from(spineLabel).join('\n') || ' '),
+                fontSize: Math.min(11, Math.max(7, spineW * 0.42)),
+                alignment: 'center',
+                color: cream,
+                margin: [1, 36, 1, 0],
+              },
+              ...(s.author.trim()
+                ? [{
+                    text: mixedText(Array.from(s.author.slice(0, 24)).join('\n')),
+                    fontSize: 7,
+                    alignment: 'center' as const,
+                    color: muted,
+                    margin: [1, 16, 1, 0] as [number, number, number, number],
+                  }]
+                : []),
+            ],
+          },
+          {
+            width: frontW,
+            stack: frontStack,
+            margin: [pad * 0.6, pad, pad, pad],
+          },
+        ],
+        columnGap: 0,
       },
-      ...(s.coverSubtitle.trim()
-        ? [{
-            text: mixedText(s.coverSubtitle),
-            fontSize: 13,
-            alignment: 'center' as const,
-            margin: [20, 0, 20, 24] as [number, number, number, number],
-            color: '#d9c9a8',
-          }]
-        : []),
-      {
-        text: mixedText(s.author),
-        fontSize: 16,
-        alignment: 'center',
-        margin: [0, 20, 0, 0] as [number, number, number, number],
-        color: '#f4efe4',
-      },
-    ] as Content[]),
+    ],
   };
   return new Promise((resolve, reject) => {
     try {
@@ -734,11 +1011,20 @@ export async function makeDocx(project: Project, s: BookSettings): Promise<Uint8
     sizeComplexScript: s.fontSize * 2,
     language: { value: english ? 'en-US' : 'bn-BD' },
   };
-  const children = [
+  const children = [];
+  if (s.halfTitle.trim()) {
+    children.push(new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { before: 2400, after: 400 },
+      children: [new TextRun({ ...run, text: s.halfTitle, size: 36, sizeComplexScript: 36 })],
+    }));
+  }
+  children.push(
     new Paragraph({
       heading: HeadingLevel.TITLE,
       alignment: AlignmentType.CENTER,
       spacing: { before: 1800, after: 600 },
+      pageBreakBefore: Boolean(s.halfTitle.trim()),
       children: [
         new TextRun({ ...run, text: project.title, bold: true, size: 56, sizeComplexScript: 56 }),
       ],
@@ -747,7 +1033,7 @@ export async function makeDocx(project: Project, s: BookSettings): Promise<Uint8
       alignment: AlignmentType.CENTER,
       children: [new TextRun({ ...run, text: s.author })],
     }),
-  ];
+  );
   if (s.coverSubtitle.trim()) {
     children.push(new Paragraph({
       alignment: AlignmentType.CENTER,
@@ -776,6 +1062,36 @@ export async function makeDocx(project: Project, s: BookSettings): Promise<Uint8
       spacing: { before: 1600 },
       children: [new TextRun({ ...run, text: s.dedication, italics: true })],
     }));
+  }
+  const pushDocxMatter = (title: string, body: string, italics = false) => {
+    children.push(new Paragraph({
+      heading: HeadingLevel.HEADING_1,
+      pageBreakBefore: true,
+      spacing: { before: 400, after: 280 },
+      children: [new TextRun({ ...run, text: title, bold: true, size: 40, sizeComplexScript: 40 })],
+    }));
+    paragraphs(body)
+      .map((p) => p.trim())
+      .filter(Boolean)
+      .forEach((p) => {
+        children.push(new Paragraph({
+          spacing: { after: 160 },
+          alignment: italics ? AlignmentType.CENTER : undefined,
+          children: [new TextRun({ ...run, text: p, italics })],
+        }));
+      });
+  };
+  if (s.epigraphText.trim()) {
+    pushDocxMatter(english ? 'Epigraph' : 'উদ্ধৃতি', s.epigraphText, true);
+    if (s.epigraphSource.trim()) {
+      children.push(new Paragraph({
+        alignment: AlignmentType.CENTER,
+        children: [new TextRun({ ...run, text: `— ${s.epigraphSource}`, italics: true })],
+      }));
+    }
+  }
+  if (s.prefaceText.trim()) {
+    pushDocxMatter(s.prefaceTitle.trim() || (english ? 'Preface' : 'ভূমিকা'), s.prefaceText);
   }
   if (s.includeToc) {
     children.push(new Paragraph({
@@ -921,6 +1237,18 @@ export async function makeDocx(project: Project, s: BookSettings): Promise<Uint8
       }
     }
   });
+  if (s.acknowledgement.trim()) {
+    pushDocxMatter(english ? 'Acknowledgements' : 'কৃতজ্ঞতা স্বীকার', s.acknowledgement);
+  }
+  if (s.glossary.trim()) {
+    pushDocxMatter(english ? 'Glossary' : 'শব্দকোষ', s.glossary);
+  }
+  if (s.authorBio.trim()) {
+    pushDocxMatter(english ? 'About the Author' : 'লেখক পরিচিতি', s.authorBio);
+  }
+  if (s.otherBooks.trim()) {
+    pushDocxMatter(english ? 'Also by the Author' : 'লেখকের অন্যান্য বই', s.otherBooks);
+  }
   const trim = trimSizeMm(s);
   const headerText =
     s.runningHeader === 'none'
@@ -1022,6 +1350,54 @@ export function makeEpub(project: Project, s: BookSettings, fonts: FontFiles): U
   );
   const extraItems: string[] = [];
   const extraSpine: string[] = [];
+  const backItems: string[] = [];
+  const backSpine: string[] = [];
+  const navFront: string[] = [];
+  const navBack: string[] = [];
+  const addXhtml = (
+    bucket: 'front' | 'back',
+    fileId: string,
+    href: string,
+    title: string,
+    inner: string,
+    epubType: string,
+  ) => {
+    files[`EPUB/${href}`] = strToU8(
+      xhtml(title, `<section epub:type="${epubType}"><h1>${xml(title)}</h1>${inner}</section>`),
+    );
+    const item = `<item id="${fileId}" href="${href}" media-type="application/xhtml+xml"/>`;
+    const spine = `<itemref idref="${fileId}"/>`;
+    const link = `<li><a href="${href}">${xml(title)}</a></li>`;
+    if (bucket === 'front') {
+      extraItems.push(item);
+      extraSpine.push(spine);
+      navFront.push(link);
+    } else {
+      backItems.push(item);
+      backSpine.push(spine);
+      navBack.push(link);
+    }
+  };
+  const bodyParas = (text: string) =>
+    paragraphs(text)
+      .map((p) => p.trim())
+      .filter(Boolean)
+      .map((p) => `<p>${xml(p)}</p>`)
+      .join('');
+
+  let leadItems = '';
+  let leadSpine = '';
+  if (s.halfTitle.trim()) {
+    files['EPUB/halftitle.xhtml'] = strToU8(
+      xhtml(
+        s.halfTitle,
+        `<section class="titlepage" epub:type="halftitlepage"><h1>${xml(s.halfTitle)}</h1></section>`,
+      ),
+    );
+    leadItems = '<item id="halftitle" href="halftitle.xhtml" media-type="application/xhtml+xml"/>';
+    leadSpine = '<itemref idref="halftitle"/>';
+    navFront.push(`<li><a href="halftitle.xhtml">${xml(s.halfTitle)}</a></li>`);
+  }
   if (hasImprint(s)) {
     const imprint = [
       s.copyrightNote || `© ${s.year || new Date().getFullYear()} ${s.author || project.title}`.trim(),
@@ -1029,11 +1405,7 @@ export function makeEpub(project: Project, s: BookSettings, fonts: FontFiles): U
       s.year ? (lang === 'en' ? `Year: ${s.year}` : `প্রকাশকাল: ${s.year}`) : '',
       s.isbn ? `ISBN ${s.isbn}` : '',
     ].filter(Boolean);
-    files['EPUB/imprint.xhtml'] = strToU8(
-      xhtml(lang === 'en' ? 'Copyright' : 'স্বত্ব', `<section epub:type="copyright-page">${imprint.map((l) => `<p>${xml(l)}</p>`).join('')}</section>`),
-    );
-    extraItems.push('<item id="imprint" href="imprint.xhtml" media-type="application/xhtml+xml"/>');
-    extraSpine.push('<itemref idref="imprint"/>');
+    addXhtml('front', 'imprint', 'imprint.xhtml', lang === 'en' ? 'Copyright' : 'স্বত্ব', imprint.map((l) => `<p>${xml(l)}</p>`).join(''), 'copyright-page');
   }
   if (s.dedication.trim()) {
     files['EPUB/dedication.xhtml'] = strToU8(
@@ -1041,11 +1413,38 @@ export function makeEpub(project: Project, s: BookSettings, fonts: FontFiles): U
     );
     extraItems.push('<item id="dedication" href="dedication.xhtml" media-type="application/xhtml+xml"/>');
     extraSpine.push('<itemref idref="dedication"/>');
+    navFront.push(`<li><a href="dedication.xhtml">${xml(lang === 'en' ? 'Dedication' : 'উৎসর্গ')}</a></li>`);
+  }
+  if (s.epigraphText.trim()) {
+    const epi = `<p class="sub">${xml(`“${s.epigraphText}”`)}</p>${s.epigraphSource.trim() ? `<p>— ${xml(s.epigraphSource)}</p>` : ''}`;
+    addXhtml('front', 'epigraph', 'epigraph.xhtml', lang === 'en' ? 'Epigraph' : 'উদ্ধৃতি', epi, 'epigraph');
+  }
+  if (s.prefaceText.trim()) {
+    addXhtml(
+      'front',
+      'preface',
+      'preface.xhtml',
+      s.prefaceTitle.trim() || (lang === 'en' ? 'Preface' : 'ভূমিকা'),
+      bodyParas(s.prefaceText),
+      'preface',
+    );
+  }
+  if (s.acknowledgement.trim()) {
+    addXhtml('back', 'ack', 'acknowledgement.xhtml', lang === 'en' ? 'Acknowledgements' : 'কৃতজ্ঞতা স্বীকার', bodyParas(s.acknowledgement), 'acknowledgements');
+  }
+  if (s.glossary.trim()) {
+    addXhtml('back', 'glossary', 'glossary.xhtml', lang === 'en' ? 'Glossary' : 'শব্দকোষ', bodyParas(s.glossary), 'glossary');
+  }
+  if (s.authorBio.trim()) {
+    addXhtml('back', 'bio', 'author.xhtml', lang === 'en' ? 'About the Author' : 'লেখক পরিচিতি', bodyParas(s.authorBio), 'contributors');
+  }
+  if (s.otherBooks.trim()) {
+    addXhtml('back', 'other', 'other-books.xhtml', lang === 'en' ? 'Also by the Author' : 'লেখকের অন্যান্য বই', bodyParas(s.otherBooks), 'appendix');
   }
   files['EPUB/nav.xhtml'] = strToU8(
     xhtml(
       lang === 'en' ? 'Contents' : 'সূচিপত্র',
-      `<nav epub:type="toc" id="toc"><h1>${lang === 'en' ? 'Contents' : 'সূচিপত্র'}</h1><ol>${project.chapters.map((c, i) => `<li><a href="chapter-${i}.xhtml">${xml(c.title)}</a></li>`).join('')}</ol></nav>`,
+      `<nav epub:type="toc" id="toc"><h1>${lang === 'en' ? 'Contents' : 'সূচিপত্র'}</h1><ol>${navFront.join('')}${project.chapters.map((c, i) => `<li><a href="chapter-${i}.xhtml">${xml(c.title)}</a></li>`).join('')}${navBack.join('')}</ol></nav>`,
     ),
   );
   files['EPUB/style.css'] = strToU8(
@@ -1079,7 +1478,7 @@ export function makeEpub(project: Project, s: BookSettings, fonts: FontFiles): U
     );
   });
   files['EPUB/package.opf'] = strToU8(
-    `<?xml version="1.0" encoding="UTF-8"?><package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="book-id" xml:lang="${lang}"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:identifier id="book-id">${id}</dc:identifier><dc:title>${xml(project.title)}</dc:title><dc:language>${lang}</dc:language>${s.author ? `<dc:creator>${xml(s.author)}</dc:creator>` : ''}${s.publisher ? `<dc:publisher>${xml(s.publisher)}</dc:publisher>` : ''}${s.isbn ? `<dc:identifier>${xml(s.isbn)}</dc:identifier>` : ''}<meta property="dcterms:modified">${date}</meta></metadata><manifest><item id="title" href="title.xhtml" media-type="application/xhtml+xml"/>${extraItems.join('')}<item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/><item id="css" href="style.css" media-type="text/css"/><item id="regular" href="fonts/regular.ttf" media-type="font/ttf"/><item id="bold" href="fonts/bold.ttf" media-type="font/ttf"/><item id="latin" href="fonts/latin.ttf" media-type="font/ttf"/><item id="latin-bold" href="fonts/latin-bold.ttf" media-type="font/ttf"/><item id="license" href="fonts/OFL.txt" media-type="text/plain"/>${project.chapters.map((_, i) => `<item id="c${i}" href="chapter-${i}.xhtml" media-type="application/xhtml+xml"/>`).join('')}</manifest><spine><itemref idref="title"/>${extraSpine.join('')}${s.includeToc ? '<itemref idref="nav"/>' : ''}${project.chapters.map((_, i) => `<itemref idref="c${i}"/>`).join('')}</spine></package>`,
+    `<?xml version="1.0" encoding="UTF-8"?><package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="book-id" xml:lang="${lang}"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:identifier id="book-id">${id}</dc:identifier><dc:title>${xml(project.title)}</dc:title><dc:language>${lang}</dc:language>${s.author ? `<dc:creator>${xml(s.author)}</dc:creator>` : ''}${s.publisher ? `<dc:publisher>${xml(s.publisher)}</dc:publisher>` : ''}${s.isbn ? `<dc:identifier>${xml(s.isbn)}</dc:identifier>` : ''}<meta property="dcterms:modified">${date}</meta></metadata><manifest>${leadItems}<item id="title" href="title.xhtml" media-type="application/xhtml+xml"/>${extraItems.join('')}<item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/><item id="css" href="style.css" media-type="text/css"/><item id="regular" href="fonts/regular.ttf" media-type="font/ttf"/><item id="bold" href="fonts/bold.ttf" media-type="font/ttf"/><item id="latin" href="fonts/latin.ttf" media-type="font/ttf"/><item id="latin-bold" href="fonts/latin-bold.ttf" media-type="font/ttf"/><item id="license" href="fonts/OFL.txt" media-type="text/plain"/>${project.chapters.map((_, i) => `<item id="c${i}" href="chapter-${i}.xhtml" media-type="application/xhtml+xml"/>`).join('')}${backItems.join('')}</manifest><spine>${leadSpine}<itemref idref="title"/>${extraSpine.join('')}${s.includeToc ? '<itemref idref="nav"/>' : ''}${project.chapters.map((_, i) => `<itemref idref="c${i}"/>`).join('')}${backSpine.join('')}</spine></package>`,
   );
   return zipSync(files, { level: 6 });
 }
