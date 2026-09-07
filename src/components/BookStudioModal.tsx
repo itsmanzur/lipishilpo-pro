@@ -11,6 +11,9 @@ import {
   CheckCircle,
   Sparkles,
   User,
+  Hash,
+  ListOrdered,
+  Layers,
 } from 'lucide-react';
 import type { Project } from '../api';
 import { fetchExportStatus } from '../api';
@@ -20,8 +23,16 @@ import {
   BOOK_THEMES,
   CALLOUT_THEMES,
   PAGE_PRESETS,
+  PAGE_NUMBER_POSITIONS,
+  PAGE_NUMBER_STYLES,
+  TOC_PRESETS,
+  CHAPTER_HEADER_STYLES,
   type PagePreset,
   type CalloutTheme,
+  type PageNumberPosition,
+  type PageNumberStyle,
+  type TocPreset,
+  type ChapterHeaderStyle,
   calculateSpineMm,
   estimatePageCount,
 } from '../lib/book-layout';
@@ -48,7 +59,9 @@ export function BookStudioModal({
   onTxt?: () => void;
   onHtml?: () => void;
 }) {
-  const [activeTab, setActiveTab] = useState<'themes' | 'layout' | 'imprint' | 'preface' | 'author' | 'cover'>('themes');
+  const [activeTab, setActiveTab] = useState<
+    'themes' | 'layout' | 'toc_pages' | 'chapter_style' | 'imprint' | 'preface' | 'author' | 'cover'
+  >('themes');
   const [busy, setBusy] = useState<string>('');
   const [statusMsg, setStatusMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
@@ -202,7 +215,7 @@ export function BookStudioModal({
                 className={`control-tab-btn ${activeTab === 'themes' ? 'active' : ''}`}
                 onClick={() => setActiveTab('themes')}
               >
-                <Sparkles size={15} />
+                <Sparkles size={14} />
                 <span>{lang === 'bn' ? '১-ক্লিক থিম' : 'Themes'}</span>
               </button>
 
@@ -211,8 +224,26 @@ export function BookStudioModal({
                 className={`control-tab-btn ${activeTab === 'layout' ? 'active' : ''}`}
                 onClick={() => setActiveTab('layout')}
               >
-                <Sliders size={15} />
+                <Sliders size={14} />
                 <span>{lang === 'bn' ? 'সাইজ ও স্পাইন' : 'Size & Spine'}</span>
+              </button>
+
+              <button
+                type="button"
+                className={`control-tab-btn ${activeTab === 'toc_pages' ? 'active' : ''}`}
+                onClick={() => setActiveTab('toc_pages')}
+              >
+                <Hash size={14} />
+                <span>{lang === 'bn' ? 'পৃষ্ঠা ও সূচি' : 'Page & TOC'}</span>
+              </button>
+
+              <button
+                type="button"
+                className={`control-tab-btn ${activeTab === 'chapter_style' ? 'active' : ''}`}
+                onClick={() => setActiveTab('chapter_style')}
+              >
+                <Layers size={14} />
+                <span>{lang === 'bn' ? 'অধ্যায় স্টাইল' : 'Chapter Design'}</span>
               </button>
 
               <button
@@ -220,8 +251,8 @@ export function BookStudioModal({
                 className={`control-tab-btn ${activeTab === 'imprint' ? 'active' : ''}`}
                 onClick={() => setActiveTab('imprint')}
               >
-                <Bookmark size={15} />
-                <span>{lang === 'bn' ? 'ইমপ্রিন্ট ও স্বত্ব' : 'Imprint & Rights'}</span>
+                <Bookmark size={14} />
+                <span>{lang === 'bn' ? 'ইমপ্রিন্ট' : 'Imprint'}</span>
               </button>
 
               <button
@@ -229,8 +260,8 @@ export function BookStudioModal({
                 className={`control-tab-btn ${activeTab === 'preface' ? 'active' : ''}`}
                 onClick={() => setActiveTab('preface')}
               >
-                <FileText size={15} />
-                <span>{lang === 'bn' ? 'ভূমিকা / নিবেদন' : 'Preface'}</span>
+                <FileText size={14} />
+                <span>{lang === 'bn' ? 'ভূমিকা' : 'Preface'}</span>
               </button>
 
               <button
@@ -238,8 +269,8 @@ export function BookStudioModal({
                 className={`control-tab-btn ${activeTab === 'author' ? 'active' : ''}`}
                 onClick={() => setActiveTab('author')}
               >
-                <User size={15} />
-                <span>{lang === 'bn' ? 'লেখক পরিচিতি' : 'Author Bio'}</span>
+                <User size={14} />
+                <span>{lang === 'bn' ? 'লেখক' : 'Author'}</span>
               </button>
 
               <button
@@ -247,8 +278,8 @@ export function BookStudioModal({
                 className={`control-tab-btn ${activeTab === 'cover' ? 'active' : ''}`}
                 onClick={() => setActiveTab('cover')}
               >
-                <Palette size={15} />
-                <span>{lang === 'bn' ? 'প্রচ্ছদ সেটিংস' : 'Cover'}</span>
+                <Palette size={14} />
+                <span>{lang === 'bn' ? 'প্রচ্ছদ' : 'Cover'}</span>
               </button>
             </div>
 
@@ -583,6 +614,240 @@ export function BookStudioModal({
                     <label htmlFor="cropMarks">
                       {lang === 'bn' ? 'প্রিন্ট কাটিং মার্ক যোগ করুন (Crop Marks)' : 'Include Print Crop Marks'}
                     </label>
+                  </div>
+                </div>
+              )}
+
+              {/* 3. PAGE NUMBERING & TABLE OF CONTENTS */}
+              {activeTab === 'toc_pages' && (
+                <div className="control-section-panel">
+                  <div className="section-divider-title">
+                    <span>{lang === 'bn' ? 'পৃষ্ঠা নম্বর অবস্থান ও বিন্যাস' : 'Page Numbering Placement'}</span>
+                  </div>
+
+                  <div className="preset-card-grid">
+                    {(Object.entries(PAGE_NUMBER_POSITIONS) as [PageNumberPosition, typeof PAGE_NUMBER_POSITIONS[PageNumberPosition]][]).map(
+                      ([key, opt]) => {
+                        const isSelected = (settings.pageNumberPosition || 'bottom-outside') === key;
+                        return (
+                          <div
+                            key={key}
+                            className={`option-choice-card ${isSelected ? 'selected' : ''}`}
+                            onClick={() => patch({ pageNumberPosition: key })}
+                          >
+                            <div className="choice-card-header">
+                              <span className="choice-title">{opt.label}</span>
+                              {isSelected && <CheckCircle size={14} className="selected-icon" />}
+                            </div>
+                            <span className="choice-desc">{opt.description}</span>
+                          </div>
+                        );
+                      }
+                    )}
+                  </div>
+
+                  <div className="section-divider-title">
+                    <span>{lang === 'bn' ? 'পৃষ্ঠা নম্বরের স্টাইল ও অলঙ্করণ' : 'Page Number Style & Motif'}</span>
+                  </div>
+
+                  <div className="preset-card-grid">
+                    {(Object.entries(PAGE_NUMBER_STYLES) as [PageNumberStyle, typeof PAGE_NUMBER_STYLES[PageNumberStyle]][]).map(
+                      ([key, opt]) => {
+                        const isSelected = (settings.pageNumberStyle || 'plain') === key;
+                        return (
+                          <div
+                            key={key}
+                            className={`option-choice-card ${isSelected ? 'selected' : ''}`}
+                            onClick={() => patch({ pageNumberStyle: key })}
+                          >
+                            <div className="choice-card-header">
+                              <span className="choice-sample-tag">{opt.sample}</span>
+                              {isSelected && <CheckCircle size={14} className="selected-icon" />}
+                            </div>
+                            <span className="choice-title" style={{ marginTop: '4px' }}>{opt.label}</span>
+                          </div>
+                        );
+                      }
+                    )}
+                  </div>
+
+                  <div className="form-group">
+                    <label>{lang === 'bn' ? 'সংখ্যার ভাষা (Numeral Script)' : 'Numeral Script'}</label>
+                    <select
+                      value={settings.numberFormat || 'bn'}
+                      onChange={(e) => patch({ numberFormat: e.target.value as 'bn' | 'en' })}
+                    >
+                      <option value="bn">বাংলা সংখ্যা (১, ২, ৩...)</option>
+                      <option value="en">English Numerals (1, 2, 3...)</option>
+                    </select>
+                  </div>
+
+                  <div className="section-divider-title">
+                    <span>{lang === 'bn' ? 'সূচিপত্র ডিজাইন প্রিসেট (5 Unique TOC Styles)' : '5 Unique TOC Presets'}</span>
+                  </div>
+
+                  <div className="preset-card-grid">
+                    {(Object.entries(TOC_PRESETS) as [TocPreset, typeof TOC_PRESETS[TocPreset]][]).map(
+                      ([key, opt]) => {
+                        const isSelected = (settings.tocPreset || 'classic-dots') === key;
+                        return (
+                          <div
+                            key={key}
+                            className={`option-choice-card ${isSelected ? 'selected' : ''}`}
+                            onClick={() => patch({ tocPreset: key })}
+                          >
+                            <div className="choice-card-header">
+                              <span className="choice-title">{opt.label}</span>
+                              {isSelected && <CheckCircle size={14} className="selected-icon" />}
+                            </div>
+                            <span className="choice-desc">{opt.description}</span>
+                          </div>
+                        );
+                      }
+                    )}
+                  </div>
+
+                  <div className="form-checkbox">
+                    <input
+                      type="checkbox"
+                      id="incTocTab"
+                      checked={settings.includeToc}
+                      onChange={(e) => patch({ includeToc: e.target.checked })}
+                    />
+                    <label htmlFor="incTocTab">
+                      {lang === 'bn' ? 'বইয়ের শুরুতে স্বয়ংক্রিয় সূচিপত্র যোগ করুন (Include TOC)' : 'Include Table of Contents in Book'}
+                    </label>
+                  </div>
+                </div>
+              )}
+
+              {/* 4. CHAPTER OPENER & DECOR STYLES */}
+              {activeTab === 'chapter_style' && (
+                <div className="control-section-panel">
+                  <div className="section-divider-title">
+                    <span>{lang === 'bn' ? 'অধ্যায় শুরুর হেডার ডিজাইন (Chapter Opener)' : 'Chapter Opener Styles'}</span>
+                  </div>
+
+                  <div className="preset-card-grid">
+                    {(Object.entries(CHAPTER_HEADER_STYLES) as [ChapterHeaderStyle, typeof CHAPTER_HEADER_STYLES[ChapterHeaderStyle]][]).map(
+                      ([key, opt]) => {
+                        const isSelected = (settings.chapterHeaderStyle || 'classic') === key;
+                        return (
+                          <div
+                            key={key}
+                            className={`option-choice-card ${isSelected ? 'selected' : ''}`}
+                            onClick={() => patch({ chapterHeaderStyle: key })}
+                          >
+                            <div className="choice-card-header">
+                              <span className="choice-title">{opt.label}</span>
+                              {isSelected && <CheckCircle size={14} className="selected-icon" />}
+                            </div>
+                            <span className="choice-desc">{opt.description}</span>
+                          </div>
+                        );
+                      }
+                    )}
+                  </div>
+
+                  <div className="section-divider-title">
+                    <span>{lang === 'bn' ? 'অলঙ্করণ ও টাইপোগ্রাফিক ইফেক্ট' : 'Typography Effects'}</span>
+                  </div>
+
+                  <div className="form-checkbox">
+                    <input
+                      type="checkbox"
+                      id="dropCapStyle"
+                      checked={settings.dropCap}
+                      onChange={(e) => patch({ dropCap: e.target.checked })}
+                    />
+                    <label htmlFor="dropCapStyle">
+                      {lang === 'bn' ? 'অধ্যায়ের প্রথম অক্ষরে ড্রপ ক্যাপ (Drop Cap) দিন' : 'Enable Chapter Drop Cap'}
+                    </label>
+                  </div>
+
+                  <div className="form-checkbox">
+                    <input
+                      type="checkbox"
+                      id="decorMotif"
+                      checked={settings.showChapterDecor}
+                      onChange={(e) => patch({ showChapterDecor: e.target.checked })}
+                    />
+                    <label htmlFor="decorMotif">
+                      {lang === 'bn' ? 'অধ্যায় ও সেকশন বিভাজনে অর্নামেন্ট (❖ — ❖) দেখান' : 'Show Section Ornaments'}
+                    </label>
+                  </div>
+
+                  <div className="section-divider-title">
+                    <span>{lang === 'bn' ? 'শিরোনামের রং কাস্টমাইজেশন' : 'Heading Color Schemes'}</span>
+                  </div>
+
+                  <div className="form-group">
+                    <label>{lang === 'bn' ? 'অধ্যায় শিরোনামের রং' : 'Chapter Title Color'}</label>
+                    <div className="color-picker-row">
+                      <input
+                        type="color"
+                        value={settings.chapterHeadingColor}
+                        onChange={(e) => patch({ chapterHeadingColor: e.target.value })}
+                        className="color-input"
+                      />
+                      <div className="color-preset-chips">
+                        {['#1a56db', '#166534', '#1e3a8a', '#991b1b', '#111827', '#6b21a8'].map((c) => (
+                          <button
+                            type="button"
+                            key={c}
+                            className={`color-chip ${settings.chapterHeadingColor === c ? 'active' : ''}`}
+                            style={{ backgroundColor: c }}
+                            onClick={() => patch({ chapterHeadingColor: c })}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <label>{lang === 'bn' ? 'উপশিরোনামের (H2/H3) রং' : 'Subheading Color'}</label>
+                    <div className="color-picker-row">
+                      <input
+                        type="color"
+                        value={settings.subheadingColor}
+                        onChange={(e) => patch({ subheadingColor: e.target.value })}
+                        className="color-input"
+                      />
+                      <div className="color-preset-chips">
+                        {['#166534', '#1e3a8a', '#991b1b', '#475569', '#0f766e', '#7c2d12'].map((c) => (
+                          <button
+                            type="button"
+                            key={c}
+                            className={`color-chip ${settings.subheadingColor === c ? 'active' : ''}`}
+                            style={{ backgroundColor: c }}
+                            onClick={() => patch({ subheadingColor: c })}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <label>{lang === 'bn' ? 'উদ্ধৃতি (Quote) বর্ডারের রং' : 'Quote Border Color'}</label>
+                    <div className="color-picker-row">
+                      <input
+                        type="color"
+                        value={settings.quoteBorderColor}
+                        onChange={(e) => patch({ quoteBorderColor: e.target.value })}
+                        className="color-input"
+                      />
+                      <div className="color-preset-chips">
+                        {['#64748b', '#059669', '#2563eb', '#dc2626', '#d97706', '#9333ea'].map((c) => (
+                          <button
+                            type="button"
+                            key={c}
+                            className={`color-chip ${settings.quoteBorderColor === c ? 'active' : ''}`}
+                            style={{ backgroundColor: c }}
+                            onClick={() => patch({ quoteBorderColor: c })}
+                          />
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}

@@ -18,13 +18,14 @@ import {
   CALLOUT_THEMES,
   calculateSpineMm,
   estimatePageCount,
+  formatStyledPageNumber,
   sheetExtraMm,
   trimSizeMm,
 } from '../lib/book-layout';
 import { parseChapterContent, toBengaliNumerals, type BookBlock } from '../lib/book-parser';
 
 export type PreviewMode = 'spread' | 'single' | 'cover';
-export type PreviewSection = 'front' | 'chapter' | 'back';
+export type PreviewSection = 'front' | 'toc' | 'chapter' | 'back';
 
 export function BookPreview({
   project,
@@ -75,12 +76,285 @@ export function BookPreview({
   const calculatedSpine = calculateSpineMm(estimatedPages, settings.paperGsm);
 
   const formatPageNum = (n: number) =>
-    settings.numberFormat === 'bn' ? toBengaliNumerals(n) : String(n);
+    formatStyledPageNumber(n, settings.pageNumberStyle || 'plain', settings.numberFormat || 'bn');
 
   const calloutStyle = CALLOUT_THEMES[settings.calloutTheme] || CALLOUT_THEMES.emerald;
 
   // Helper to convert typography pt to scaled screen pixels (1 pt = 0.3528 mm)
   const ptToPx = (pt: number, minPx = 8.5) => Math.max(minPx, pt * 0.3528 * currentScale);
+
+  // Helper for chapter header opener style
+  const renderChapterHeader = (title: string, chapterNum = currentChapterIdx + 1) => {
+    const headerStyle = settings.chapterHeaderStyle || 'classic';
+    const numStr = settings.numberFormat === 'bn' ? toBengaliNumerals(chapterNum) : String(chapterNum);
+    const paddedNum = numStr.length === 1 ? (settings.numberFormat === 'bn' ? `০${numStr}` : `0${numStr}`) : numStr;
+
+    switch (headerStyle) {
+      case 'modern-minimal':
+        return (
+          <div className="chapter-opening-banner chapter-header-modern" style={{ marginBottom: `${16 * currentScale}px`, marginTop: `${6 * currentScale}px` }}>
+            <div style={{ fontSize: `${ptToPx(settings.fontSize * 0.8, 8.5)}px`, color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px' }}>
+              {lang === 'bn' ? `অধ্যায় — ${numStr}` : `CHAPTER — ${numStr}`}
+            </div>
+            <h2
+              className="chapter-main-heading"
+              style={{
+                color: settings.chapterHeadingColor,
+                fontSize: `${ptToPx(settings.fontSize * 1.5, 14)}px`,
+                fontWeight: 800,
+                lineHeight: 1.3,
+                margin: `${4 * currentScale}px 0 0`,
+                paddingBottom: `${6 * currentScale}px`,
+                borderBottom: `2.5px solid ${settings.chapterHeadingColor}`,
+              }}
+            >
+              {title}
+            </h2>
+          </div>
+        );
+
+      case 'ornament-frame':
+        return (
+          <div
+            className="chapter-opening-banner chapter-header-frame"
+            style={{
+              marginBottom: `${16 * currentScale}px`,
+              marginTop: `${8 * currentScale}px`,
+              border: `1.5px double ${settings.chapterHeadingColor}`,
+              padding: `${10 * currentScale}px ${12 * currentScale}px`,
+              textAlign: 'center',
+              borderRadius: `${2 * currentScale}px`,
+              backgroundColor: '#fcfcfc',
+            }}
+          >
+            <div style={{ fontSize: `${ptToPx(settings.fontSize * 0.8, 8.5)}px`, color: settings.chapterHeadingColor, letterSpacing: '2px', marginBottom: `${2 * currentScale}px` }}>
+              ❖ {lang === 'bn' ? `অধ্যায় ${numStr}` : `Chapter ${numStr}`} ❖
+            </div>
+            <h2
+              className="chapter-main-heading"
+              style={{
+                color: settings.chapterHeadingColor,
+                fontSize: `${ptToPx(settings.fontSize * 1.45, 13.5)}px`,
+                fontWeight: 800,
+                lineHeight: 1.35,
+                margin: 0,
+              }}
+            >
+              {title}
+            </h2>
+          </div>
+        );
+
+      case 'drop-num':
+        return (
+          <div
+            className="chapter-opening-banner chapter-header-dropnum"
+            style={{
+              marginBottom: `${14 * currentScale}px`,
+              marginTop: `${6 * currentScale}px`,
+              display: 'flex',
+              alignItems: 'baseline',
+              gap: `${10 * currentScale}px`,
+            }}
+          >
+            <div
+              style={{
+                fontSize: `${ptToPx(settings.fontSize * 3.4, 26)}px`,
+                fontWeight: 900,
+                lineHeight: 0.9,
+                color: settings.chapterHeadingColor,
+                opacity: 0.85,
+                fontFamily: settings.fontFamily,
+              }}
+            >
+              {paddedNum}
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: `${ptToPx(settings.fontSize * 0.75, 8)}px`, color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>
+                {lang === 'bn' ? 'অধ্যায়' : 'Chapter'}
+              </div>
+              <h2
+                className="chapter-main-heading"
+                style={{
+                  color: '#1e293b',
+                  fontSize: `${ptToPx(settings.fontSize * 1.35, 13)}px`,
+                  fontWeight: 800,
+                  lineHeight: 1.3,
+                  margin: 0,
+                }}
+              >
+                {title}
+              </h2>
+            </div>
+          </div>
+        );
+
+      case 'classic':
+      default:
+        return (
+          <div className="chapter-opening-banner chapter-header-classic" style={{ marginBottom: `${14 * currentScale}px`, marginTop: `${6 * currentScale}px` }}>
+            <h2
+              className="chapter-main-heading"
+              style={{
+                color: settings.chapterHeadingColor,
+                fontSize: `${ptToPx(settings.fontSize * 1.5, 14)}px`,
+                fontWeight: 800,
+                lineHeight: 1.35,
+                marginBottom: `${6 * currentScale}px`,
+                marginTop: 0,
+              }}
+            >
+              {title}
+            </h2>
+            {settings.showChapterDecor && (
+              <div style={{ color: '#94a3b8', fontSize: `${ptToPx(settings.fontSize * 0.8, 8)}px`, letterSpacing: '4px', marginBottom: `${6 * currentScale}px` }}>
+                ❖ — ❖ — ❖
+              </div>
+            )}
+          </div>
+        );
+    }
+  };
+
+  // Helper to render Table of Contents depending on selected preset
+  const renderTableOfContents = () => {
+    const preset = settings.tocPreset || 'classic-dots';
+    const sampleChapters = chapters.length > 1 ? chapters : [
+      { id: '1', title: 'অধ্যায় ১: সাক্ষাৎকার ও প্রথম চাকরির প্রস্তুতি' },
+      { id: '2', title: 'অধ্যায় ২: আত্মউন্নয়ন ও দক্ষতা বৃদ্ধির পথ' },
+      { id: '3', title: 'অধ্যায় ৩: কর্মক্ষেত্রে যোগাযোগ ও টিমওয়ার্ক' },
+      { id: '4', title: 'অধ্যায় ৪: সময় ব্যবস্থাপনা ও মানসিক দৃঢ়তা' },
+      { id: '5', title: 'অধ্যায় ৫: সফলতার নীতি ও নৈতিকতা' },
+    ];
+
+    return (
+      <div className="toc-preview-container" style={{ padding: `${4 * currentScale}px 0` }}>
+        <h2
+          style={{
+            textAlign: 'center',
+            color: settings.chapterHeadingColor,
+            fontSize: `${ptToPx(settings.fontSize * 1.45, 13)}px`,
+            fontWeight: 800,
+            marginBottom: `${14 * currentScale}px`,
+            borderBottom: preset === 'modern-big' ? `2px solid ${settings.chapterHeadingColor}` : 'none',
+            paddingBottom: preset === 'modern-big' ? `${6 * currentScale}px` : 0,
+          }}
+        >
+          {lang === 'bn' ? 'সূচিপত্র' : 'Table of Contents'}
+        </h2>
+
+        {preset === 'classic-dots' && (
+          <div className="toc-list-classic" style={{ display: 'flex', flexDirection: 'column', gap: `${8 * currentScale}px` }}>
+            {sampleChapters.map((ch, idx) => (
+              <div key={ch.id || idx} style={{ display: 'flex', alignItems: 'baseline', fontSize: `${ptToPx(settings.fontSize * 0.95, 9)}px` }}>
+                <span style={{ fontWeight: 600, color: '#1e293b' }}>{ch.title}</span>
+                <span style={{ flex: 1, borderBottom: '1px dotted #94a3b8', margin: `0 ${6 * currentScale}px`, minWidth: '15px' }} />
+                <span style={{ fontWeight: 700, color: '#475569' }}>
+                  {formatPageNum(idx * 8 + 5)}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {preset === 'modern-big' && (
+          <div className="toc-list-modern" style={{ display: 'flex', flexDirection: 'column', gap: `${10 * currentScale}px` }}>
+            {sampleChapters.map((ch, idx) => {
+              const num = idx + 1;
+              const numStr = settings.numberFormat === 'bn' ? toBengaliNumerals(num) : String(num);
+              const padded = numStr.length === 1 ? (settings.numberFormat === 'bn' ? `০${numStr}` : `0${numStr}`) : numStr;
+              return (
+                <div
+                  key={ch.id || idx}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: `${5 * currentScale}px ${8 * currentScale}px`,
+                    background: '#f8fafc',
+                    borderRadius: `${4 * currentScale}px`,
+                    borderLeft: `3px solid ${settings.chapterHeadingColor}`,
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: `${8 * currentScale}px` }}>
+                    <span style={{ fontSize: `${ptToPx(settings.fontSize * 1.1, 10.5)}px`, fontWeight: 800, color: settings.chapterHeadingColor }}>
+                      {padded}
+                    </span>
+                    <span style={{ fontSize: `${ptToPx(settings.fontSize * 0.92, 9)}px`, fontWeight: 600, color: '#1e293b' }}>
+                      {ch.title}
+                    </span>
+                  </div>
+                  <span
+                    style={{
+                      fontSize: `${ptToPx(settings.fontSize * 0.82, 8)}px`,
+                      fontWeight: 700,
+                      background: '#ffffff',
+                      padding: `2px ${6 * currentScale}px`,
+                      borderRadius: '4px',
+                      color: '#475569',
+                      border: '1px solid #e2e8f0',
+                    }}
+                  >
+                    {formatPageNum(idx * 8 + 5)}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {preset === 'ornamented' && (
+          <div className="toc-list-ornamented" style={{ display: 'flex', flexDirection: 'column', gap: `${10 * currentScale}px`, textAlign: 'center' }}>
+            {sampleChapters.map((ch, idx) => (
+              <div key={ch.id || idx} style={{ borderBottom: '1px dashed #e2e8f0', paddingBottom: `${6 * currentScale}px` }}>
+                <div style={{ fontSize: `${ptToPx(settings.fontSize * 0.95, 9)}px`, fontWeight: 700, color: '#1e293b', marginBottom: '2px' }}>
+                  ❖ {ch.title} ❖
+                </div>
+                <div style={{ fontSize: `${ptToPx(settings.fontSize * 0.8, 8)}px`, color: '#64748b' }}>
+                  {lang === 'bn' ? 'পৃষ্ঠা' : 'Page'} — {formatPageNum(idx * 8 + 5)}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {preset === 'summary' && (
+          <div className="toc-list-summary" style={{ display: 'flex', flexDirection: 'column', gap: `${10 * currentScale}px` }}>
+            {sampleChapters.map((ch, idx) => (
+              <div key={ch.id || idx} style={{ borderBottom: '1px solid #f1f5f9', paddingBottom: `${5 * currentScale}px` }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                  <span style={{ fontSize: `${ptToPx(settings.fontSize * 0.95, 9)}px`, fontWeight: 700, color: '#1e293b' }}>
+                    {ch.title}
+                  </span>
+                  <span style={{ fontSize: `${ptToPx(settings.fontSize * 0.85, 8.5)}px`, fontWeight: 700, color: settings.chapterHeadingColor }}>
+                    {formatPageNum(idx * 8 + 5)}
+                  </span>
+                </div>
+                <div style={{ fontSize: `${ptToPx(settings.fontSize * 0.78, 7.5)}px`, color: '#64748b', marginTop: '2px', fontStyle: 'italic' }}>
+                  {lang === 'bn' ? 'মূল বিষয়বস্তু, বাস্তবিক অভিজ্ঞতা ও নির্দেশনাবলী।' : 'Key insights, practices, and guidelines.'}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {preset === 'minimal' && (
+          <div className="toc-list-minimal" style={{ display: 'flex', flexDirection: 'column', gap: `${8 * currentScale}px` }}>
+            {sampleChapters.map((ch, idx) => (
+              <div key={ch.id || idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                <span style={{ fontSize: `${ptToPx(settings.fontSize * 0.92, 9)}px`, color: '#1e293b', fontWeight: 500 }}>
+                  {ch.title}
+                </span>
+                <span style={{ fontSize: `${ptToPx(settings.fontSize * 0.88, 8.5)}px`, color: '#334155', fontWeight: 600 }}>
+                  {formatPageNum(idx * 8 + 5)}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   // Render parsed block inside page
   const renderBlock = (block: BookBlock, bIdx: number) => {
@@ -283,6 +557,8 @@ export function BookPreview({
     }
   };
 
+  const pos = settings.pageNumberPosition || 'bottom-outside';
+
   return (
     <div className={`book-preview-container ${isExpanded ? 'is-expanded' : 'is-sidebar'}`}>
       {/* Top Preview Controls Bar */}
@@ -323,7 +599,7 @@ export function BookPreview({
           </button>
         </div>
 
-        {/* Section Pill Switcher (Front Matter vs Chapter vs Author Bio) */}
+        {/* Section Pill Switcher (Front Matter vs TOC vs Chapter vs Author Bio) */}
         {isExpanded && previewMode !== 'cover' && (
           <div className="section-pill-switcher">
             <button
@@ -333,6 +609,15 @@ export function BookPreview({
             >
               <Bookmark size={13} />
               <span>{lang === 'bn' ? 'শুরুর পাতা' : 'Front Matter'}</span>
+            </button>
+
+            <button
+              type="button"
+              className={`section-pill-btn ${currentSection === 'toc' ? 'active' : ''}`}
+              onClick={() => setCurrentSection('toc')}
+            >
+              <FileText size={13} />
+              <span>{lang === 'bn' ? 'সূচিপত্র' : 'TOC'}</span>
             </button>
 
             <button
@@ -477,8 +762,18 @@ export function BookPreview({
                 }}
               >
                 {/* Running Header */}
-                <div className="book-running-header left">
+                <div className={`book-running-header left ${pos === 'top-outside' || pos === 'top-center' ? 'has-top-num' : ''}`}>
+                  {pos === 'top-outside' && (
+                    <span className="header-page-num" style={{ fontWeight: 700, marginRight: '10px' }}>
+                      {formatPageNum(currentSection === 'front' ? 2 : currentSection === 'toc' ? 4 : currentSection === 'back' ? estimatedPages - 1 : currentChapterIdx * 2 + 2)}
+                    </span>
+                  )}
                   <span>{settings.runningHeader === 'author' ? settings.author : project.title}</span>
+                  {pos === 'top-center' && (
+                    <span className="header-page-num center" style={{ fontWeight: 700, marginLeft: 'auto', marginRight: 'auto' }}>
+                      {formatPageNum(currentSection === 'front' ? 2 : currentSection === 'toc' ? 4 : currentSection === 'back' ? estimatedPages - 1 : currentChapterIdx * 2 + 2)}
+                    </span>
+                  )}
                 </div>
 
                 {/* Verso Content depends on currentSection */}
@@ -517,6 +812,16 @@ export function BookPreview({
                         </div>
                       )}
                     </div>
+                  ) : currentSection === 'toc' ? (
+                    /* TOC Left Page: Preface or Half-Title */
+                    <div className="verso-imprint-card">
+                      <h3 className="verso-title">{project.title}</h3>
+                      {settings.author && <p className="verso-author">{settings.author}</p>}
+                      <div className="verso-divider" />
+                      <p className="verso-imprint-line" style={{ fontStyle: 'italic' }}>
+                        {lang === 'bn' ? 'সূচিপত্র ও অধ্যায় বিন্যাস' : 'Table of Contents & Structure'}
+                      </p>
+                    </div>
                   ) : currentSection === 'back' ? (
                     /* Back Matter Verso: Other Books */
                     <div className="back-matter-box">
@@ -539,10 +844,12 @@ export function BookPreview({
                   )}
                 </div>
 
-                {/* Running Footer */}
-                <div className="book-running-footer left">
-                  <span>{formatPageNum(currentSection === 'front' ? 2 : currentSection === 'back' ? estimatedPages - 1 : currentChapterIdx * 2 + 2)}</span>
-                </div>
+                {/* Running Footer with Dynamic Placement */}
+                {pos !== 'none' && !pos.startsWith('top') && (
+                  <div className={`book-running-footer ${pos === 'bottom-center' ? 'center' : 'left'}`}>
+                    <span>{formatPageNum(currentSection === 'front' ? 2 : currentSection === 'toc' ? 4 : currentSection === 'back' ? estimatedPages - 1 : currentChapterIdx * 2 + 2)}</span>
+                  </div>
+                )}
               </div>
 
               {/* Book Spine Crease Shadow */}
@@ -558,14 +865,21 @@ export function BookPreview({
                 }}
               >
                 {/* Running Header */}
-                <div className="book-running-header right">
+                <div className={`book-running-header right ${pos === 'top-outside' || pos === 'top-center' ? 'has-top-num' : ''}`}>
                   <span>
                     {currentSection === 'front'
                       ? settings.prefaceTitle || 'ভূমিকা'
-                      : currentSection === 'back'
-                        ? 'লেখক পরিচিতি'
-                        : currentChapter.title || 'অধ্যায় ১'}
+                      : currentSection === 'toc'
+                        ? 'সূচিপত্র'
+                        : currentSection === 'back'
+                          ? 'লেখক পরিচিতি'
+                          : currentChapter.title || 'অধ্যায় ১'}
                   </span>
+                  {pos === 'top-outside' && (
+                    <span className="header-page-num" style={{ fontWeight: 700, marginLeft: '10px' }}>
+                      {formatPageNum(currentSection === 'front' ? 3 : currentSection === 'toc' ? 5 : currentSection === 'back' ? estimatedPages : currentChapterIdx * 2 + 3)}
+                    </span>
+                  )}
                 </div>
 
                 {/* Recto Content depends on currentSection */}
@@ -600,6 +914,9 @@ export function BookPreview({
                             : 'Author preface or foreword text will appear here.')}
                       </p>
                     </div>
+                  ) : currentSection === 'toc' ? (
+                    /* Table of Contents Preset View */
+                    renderTableOfContents()
                   ) : currentSection === 'back' ? (
                     /* Back Matter Recto: Author Bio */
                     <div className="recto-author-bio-container">
@@ -633,21 +950,7 @@ export function BookPreview({
                   ) : (
                     /* Main Chapter Opening Page */
                     <>
-                      <div className="chapter-opening-banner">
-                        <h2
-                          className="chapter-main-heading"
-                          style={{
-                            color: settings.chapterHeadingColor,
-                            fontSize: `${ptToPx(settings.fontSize * 1.55, 14)}px`,
-                            fontWeight: 800,
-                            lineHeight: 1.35,
-                            marginBottom: `${12 * currentScale}px`,
-                            marginTop: `${8 * currentScale}px`,
-                          }}
-                        >
-                          {currentChapter.title || (lang === 'bn' ? 'অধ্যায় ১: সাক্ষাৎকার ও প্রথম চাকরির প্রস্তুতি' : 'Chapter 1')}
-                        </h2>
-                      </div>
+                      {renderChapterHeader(currentChapter.title || (lang === 'bn' ? 'অধ্যায় ১: সাক্ষাৎকার ও প্রথম চাকরির প্রস্তুতি' : 'Chapter 1'), currentChapterIdx + 1)}
                       <div className="page-body-content">
                         {blocks.slice(0, isExpanded ? 24 : 12).map((b, idx) => renderBlock(b, idx))}
                       </div>
@@ -655,10 +958,12 @@ export function BookPreview({
                   )}
                 </div>
 
-                {/* Running Footer */}
-                <div className="book-running-footer right">
-                  <span>{formatPageNum(currentSection === 'front' ? 3 : currentSection === 'back' ? estimatedPages : currentChapterIdx * 2 + 3)}</span>
-                </div>
+                {/* Running Footer with Dynamic Placement */}
+                {pos !== 'none' && !pos.startsWith('top') && (
+                  <div className={`book-running-footer ${pos === 'bottom-center' ? 'center' : 'right'}`}>
+                    <span>{formatPageNum(currentSection === 'front' ? 3 : currentSection === 'toc' ? 5 : currentSection === 'back' ? estimatedPages : currentChapterIdx * 2 + 3)}</span>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -680,29 +985,17 @@ export function BookPreview({
                 <span>{currentChapter.title || project.title}</span>
               </div>
 
-              <div className="chapter-opening-banner">
-                <h2
-                  className="chapter-main-heading"
-                  style={{
-                    color: settings.chapterHeadingColor,
-                    fontSize: `${ptToPx(settings.fontSize * 1.5, 14)}px`,
-                    fontWeight: 800,
-                    lineHeight: 1.35,
-                    marginBottom: `${12 * currentScale}px`,
-                    marginTop: `${8 * currentScale}px`,
-                  }}
-                >
-                  {currentChapter.title || (lang === 'bn' ? 'অধ্যায় ১: সাক্ষাৎকার ও প্রথম চাকরির প্রস্তুতি' : 'Chapter 1')}
-                </h2>
-              </div>
+              {renderChapterHeader(currentChapter.title || (lang === 'bn' ? 'অধ্যায় ১: সাক্ষাৎকার ও প্রথম চাকরির প্রস্তুতি' : 'Chapter 1'), currentChapterIdx + 1)}
 
               <div className="page-body-content">
                 {blocks.map((b, idx) => renderBlock(b, idx))}
               </div>
 
-              <div className="book-running-footer center">
-                <span>{formatPageNum(currentChapterIdx + 1)}</span>
-              </div>
+              {pos !== 'none' && !pos.startsWith('top') && (
+                <div className={`book-running-footer ${pos === 'bottom-outside' ? 'right' : 'center'}`}>
+                  <span>{formatPageNum(currentChapterIdx + 1)}</span>
+                </div>
+              )}
             </div>
           </div>
         )}

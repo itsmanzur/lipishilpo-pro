@@ -1,10 +1,19 @@
-﻿export type PagePreset = 'A5' | 'A4' | 'B5' | 'US_Trade' | 'Digest' | 'custom';
+export type PagePreset = 'A5' | 'A4' | 'B5' | 'US_Trade' | 'Digest' | 'custom';
 export type RunningHeader = 'none' | 'title' | 'author' | 'split';
 export type NumberFormat = 'bn' | 'en';
 export type TextAlign = 'justify' | 'left';
 export type CalloutTheme = 'emerald' | 'sky' | 'amber' | 'slate';
 export type BookThemePreset = 'nonfiction' | 'classic' | 'islamic' | 'minimal' | 'poetry' | 'custom';
 export type ChapterStartSide = 'recto' | 'any';
+export type PageNumberPosition = 'bottom-outside' | 'bottom-center' | 'top-outside' | 'top-center' | 'none';
+export type PageNumberStyle = 'plain' | 'dash' | 'bracket' | 'motif' | 'circle';
+export type TocPreset = 'classic-dots' | 'modern-big' | 'ornamented' | 'summary' | 'minimal';
+export type ChapterHeaderStyle = 'classic' | 'modern-minimal' | 'ornament-frame' | 'drop-num';
+
+const BN_DIGITS = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
+export function toBengaliNumerals(val: number | string): string {
+  return String(val).replace(/\d/g, (d) => BN_DIGITS[Number(d)] ?? d);
+}
 
 export type BookSettings = {
   // Imprint & Publication Metadata
@@ -25,6 +34,7 @@ export type BookSettings = {
   authorBio: string;
   otherBooks: string;
   includeToc: boolean;
+  tocPreset: TocPreset;
 
   // Book Layout & Paper
   pageSize: PagePreset;
@@ -38,6 +48,12 @@ export type BookSettings = {
   numberFormat: NumberFormat;
   chapterStartSide: ChapterStartSide;
 
+  // Page Numbering & Headers
+  pageNumberPosition: PageNumberPosition;
+  pageNumberStyle: PageNumberStyle;
+  runningHeader: RunningHeader;
+  chapterHeaderStyle: ChapterHeaderStyle;
+
   // Margins
   marginInnerMm: number;
   marginOuterMm: number;
@@ -47,7 +63,6 @@ export type BookSettings = {
 
   // Visual Theme & Colors
   themePreset: BookThemePreset;
-  runningHeader: RunningHeader;
   chapterHeadingColor: string;
   subheadingColor: string;
   calloutTheme: CalloutTheme;
@@ -185,6 +200,114 @@ export const BOOK_THEMES: Record<
   },
 };
 
+export const PAGE_NUMBER_POSITIONS: Record<PageNumberPosition, { label: string; desc: string; description: string }> = {
+  'bottom-outside': { label: 'নিচে বাইরে (স্ট্যান্ডার্ড)', desc: 'বাম পাতায় নিচে-বামে এবং ডান পাতায় নিচে-ডানে', description: 'বাম পাতায় নিচে-বামে এবং ডান পাতায় নিচে-ডানে' },
+  'bottom-center': { label: 'নিচে মাঝে (সেন্টার)', desc: 'প্রতিটি পৃষ্ঠার নিচের মাঝামাঝি অংশে', description: 'প্রতিটি পৃষ্ঠার নিচের মাঝামাঝি অংশে' },
+  'top-outside': { label: 'উপরে বাইরে (হেডারে)', desc: 'রানিং হেডারের সাথে পৃষ্ঠার উপরের কোণে', description: 'রানিং হেডারের সাথে পৃষ্ঠার উপরের কোণে' },
+  'top-center': { label: 'উপরে মাঝে (হেডারে)', desc: 'রানিং হেডারের সাথে উপরের মাঝে', description: 'রানিং হেডারের সাথে উপরের মাঝে' },
+  'none': { label: 'নম্বর নেই (বন্ধ)', desc: 'কোনো পৃষ্ঠা নম্বর প্রদর্শিত হবে না', description: 'কোনো পৃষ্ঠা নম্বর প্রদর্শিত হবে না' },
+};
+
+export const PAGE_NUMBER_STYLES: Record<PageNumberStyle, { label: string; example: string; sample: string }> = {
+  plain: { label: 'সাধারণ সংখ্যা', example: '১, ২, ৩', sample: '১' },
+  dash: { label: 'ড্যাশ ও হাইফেন', example: '— ১ —, — ২ —', sample: '— ১ —' },
+  bracket: { label: 'ক্লাসিক বন্ধনী', example: '[ ১ ], [ ২ ]', sample: '[ ১ ]' },
+  motif: { label: 'অলঙ্কৃত প্রতীক (❖)', example: '❖ ১ ❖, ❖ ২ ❖', sample: '❖ ১ ❖' },
+  circle: { label: 'বুলেট ডট (•)', example: '• ১ •, • ২ •', sample: '• ১ •' },
+};
+
+export const TOC_PRESETS: Record<
+  TocPreset,
+  {
+    name: string;
+    label: string;
+    description: string;
+    icon: string;
+  }
+> = {
+  'classic-dots': {
+    name: '১. ক্লাসিক ডট লিডার',
+    label: 'ক্লাসিক ডটেড লিডার',
+    description: 'ঐতিহ্যবাহী ডটেড লাইন লিডার ও ডান-বিন্যস্ত পৃষ্ঠা নম্বর (উপন্যাস ও সাহিত্য)',
+    icon: '📜',
+  },
+  'modern-big': {
+    name: '২. মডার্ন বিগ নিউমেরাল',
+    label: 'মডার্ন বিগ নিউমেরাল',
+    description: 'বড় বোল্ড সংখ্যা (০১, ০২) ও পরিচ্ছন্ন শিরোনাম (নন-ফিকশন ও ক্যারিয়ার)',
+    icon: '🚀',
+  },
+  'ornamented': {
+    name: '৩. অলঙ্কৃত সাহিত্যিক',
+    label: 'অলঙ্কৃত সাহিত্যিক',
+    description: 'অধ্যায়ের শুরুতে মার্জিত প্রকাশনা মোটিফ ও ডিভাইডার (ক্লাসিক ও ধর্মীয় গ্রন্থ)',
+    icon: '❖',
+  },
+  'summary': {
+    name: '৪. ম্যাগাজিন ও সারাংশ সূচি',
+    label: 'সারাংশ সূচিপত্র',
+    description: 'অধ্যায় শিরোনামের সাথে ছোট এক লাইনের সারাংশ বিবরণী (গাইড ও প্রশিক্ষণ)',
+    icon: '📑',
+  },
+  'minimal': {
+    name: '৫. মিনিমালিস্ট ক্লিন গ্রিড',
+    label: 'মিনিমালিস্ট পরিচ্ছন্ন',
+    description: 'কোনো ডট ছাড়া স্নিগ্ধ ও পরিচ্ছন্ন আর্ট বুক লেআউট (আধুনিক ও কাব্যগ্রন্থ)',
+    icon: '✨',
+  },
+};
+
+export const CHAPTER_HEADER_STYLES: Record<
+  ChapterHeaderStyle,
+  {
+    name: string;
+    label: string;
+    description: string;
+  }
+> = {
+  'classic': {
+    name: 'ক্লাসিক সাহিত্যিক (Classic)',
+    label: 'ক্লাসিক সাহিত্যিক',
+    description: 'ঐতিহ্যবাহী শিরোনাম ও নিচে অলঙ্কৃত মোটিফ ডিভাইডার',
+  },
+  'modern-minimal': {
+    name: 'মডার্ন মিনিমাল (Modern Minimal)',
+    label: 'মডার্ন মিনিমাল',
+    description: 'আধুনিক অধ্যায় ট্যাগ, গাঢ় শিরোনাম ও অ্যাকসেন্ট আন্ডারলাইন বার',
+  },
+  'ornament-frame': {
+    name: 'অলঙ্কৃত ভিন্টেজ ফ্রেম (Ornament Frame)',
+    label: 'অলঙ্কৃত ভিন্টেজ ফ্রেম',
+    description: 'মার্জিত চারকোনা অলঙ্কৃত বর্ডার ফ্রেমের ভেতরে শিরোনাম',
+  },
+  'drop-num': {
+    name: 'বিগ ড্রপ নাম্বার (Drop Number)',
+    label: 'বিগ ড্রপ নাম্বার',
+    description: 'বড় স্টাইলিশ সংখ্যা (০১, ০২) এবং তার পাশে অধ্যায় শিরোনাম',
+  },
+};
+
+export function formatStyledPageNumber(
+  pageNum: number | string,
+  style: PageNumberStyle = 'plain',
+  numberFormat: 'bn' | 'en' = 'bn'
+): string {
+  const digits = numberFormat === 'bn' ? toBengaliNumerals(pageNum) : String(pageNum);
+  switch (style) {
+    case 'dash':
+      return `— ${digits} —`;
+    case 'bracket':
+      return `[ ${digits} ]`;
+    case 'motif':
+      return `❖ ${digits} ❖`;
+    case 'circle':
+      return `• ${digits} •`;
+    case 'plain':
+    default:
+      return digits;
+  }
+}
+
 export const defaultBookSettings: BookSettings = {
   author: '',
   publisher: '',
@@ -202,6 +325,7 @@ export const defaultBookSettings: BookSettings = {
   authorBio: '',
   otherBooks: '',
   includeToc: true,
+  tocPreset: 'classic-dots',
 
   pageSize: 'A5',
   customWidthMm: 140,
@@ -214,6 +338,11 @@ export const defaultBookSettings: BookSettings = {
   numberFormat: 'bn',
   chapterStartSide: 'recto',
 
+  pageNumberPosition: 'bottom-outside',
+  pageNumberStyle: 'plain',
+  runningHeader: 'split',
+  chapterHeaderStyle: 'classic',
+
   marginInnerMm: 20,
   marginOuterMm: 16,
   marginTopMm: 18,
@@ -221,7 +350,6 @@ export const defaultBookSettings: BookSettings = {
   firstLineIndentMm: 5,
 
   themePreset: 'nonfiction',
-  runningHeader: 'split',
   chapterHeadingColor: '#1a56db',
   subheadingColor: '#166534',
   calloutTheme: 'emerald',
@@ -354,5 +482,9 @@ export function normalizeSettings(raw: Partial<BookSettings> & { marginMm?: numb
     textAlign: raw.textAlign || defaultBookSettings.textAlign,
     paperGsm: raw.paperGsm || defaultBookSettings.paperGsm,
     chapterStartSide: raw.chapterStartSide || defaultBookSettings.chapterStartSide,
+    pageNumberPosition: raw.pageNumberPosition || defaultBookSettings.pageNumberPosition,
+    pageNumberStyle: raw.pageNumberStyle || defaultBookSettings.pageNumberStyle,
+    tocPreset: raw.tocPreset || defaultBookSettings.tocPreset,
+    chapterHeaderStyle: raw.chapterHeaderStyle || defaultBookSettings.chapterHeaderStyle,
   };
 }

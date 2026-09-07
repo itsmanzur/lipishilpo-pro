@@ -7,6 +7,7 @@ import {
   CALLOUT_THEMES,
   contentMarginsPt,
   defaultBookSettings,
+  formatStyledPageNumber,
   hasImprint,
   mmToPt,
   mmToTwip,
@@ -200,18 +201,167 @@ export function pdfDefinition(project: Project, s: BookSettings): TDocumentDefin
   }
 
   const calloutTheme = CALLOUT_THEMES[s.calloutTheme] || CALLOUT_THEMES.emerald;
+  const headerStyle = s.chapterHeaderStyle || 'classic';
+  const pos = s.pageNumberPosition || 'bottom-outside';
 
-  for (const c of project.chapters) {
-    content.push({
-      text: mixedText(c.title || 'অধ্যায়'),
-      fontSize: 22,
-      bold: true,
-      color: s.chapterHeadingColor || '#1a56db',
-      margin: [0, 15, 0, 18],
-      pageBreak: 'before',
-      // @ts-expect-error — tocItem exists at runtime
-      tocItem: true,
-    });
+  project.chapters.forEach((c, cIdx) => {
+    const chapterNum = cIdx + 1;
+    const numStr = s.numberFormat === 'bn' ? toBengaliNumerals(chapterNum) : String(chapterNum);
+    const paddedNum = numStr.length === 1 ? (s.numberFormat === 'bn' ? `০${numStr}` : `0${numStr}`) : numStr;
+
+    if (headerStyle === 'modern-minimal') {
+      content.push({
+        stack: [
+          {
+            text: mixedText(english ? `CHAPTER — ${numStr}` : `অধ্যায় — ${numStr}`),
+            fontSize: 10,
+            bold: true,
+            color: '#64748b',
+            margin: [0, 15, 0, 4],
+          },
+          {
+            text: mixedText(c.title || 'অধ্যায়'),
+            fontSize: 22,
+            bold: true,
+            color: s.chapterHeadingColor || '#1a56db',
+            margin: [0, 0, 0, 6],
+          },
+          {
+            canvas: [
+              {
+                type: 'line',
+                x1: 0,
+                y1: 0,
+                x2: 140,
+                y2: 0,
+                lineWidth: 2.5,
+                lineColor: s.chapterHeadingColor || '#1a56db',
+              },
+            ],
+            margin: [0, 0, 0, 14],
+          },
+        ],
+        pageBreak: 'before',
+        // @ts-expect-error — tocItem exists at runtime
+        tocItem: true,
+      });
+    } else if (headerStyle === 'ornament-frame') {
+      content.push({
+        table: {
+          widths: ['*'],
+          body: [
+            [
+              {
+                stack: [
+                  {
+                    text: mixedText(`❖ ${english ? 'Chapter' : 'অধ্যায়'} ${numStr} ❖`),
+                    fontSize: 10,
+                    alignment: 'center',
+                    color: s.chapterHeadingColor || '#1a56db',
+                    margin: [0, 4, 0, 4],
+                  },
+                  {
+                    text: mixedText(c.title || 'অধ্যায়'),
+                    fontSize: 20,
+                    bold: true,
+                    alignment: 'center',
+                    color: s.chapterHeadingColor || '#1a56db',
+                    margin: [0, 0, 0, 4],
+                  },
+                ],
+                borderColor: [
+                  s.chapterHeadingColor || '#1a56db',
+                  s.chapterHeadingColor || '#1a56db',
+                  s.chapterHeadingColor || '#1a56db',
+                  s.chapterHeadingColor || '#1a56db',
+                ],
+                fillColor: '#fcfcfc',
+                margin: [10, 8, 10, 8],
+              },
+            ],
+          ],
+        },
+        layout: {
+          hLineWidth: () => 1.5,
+          vLineWidth: () => 1.5,
+          hLineColor: () => s.chapterHeadingColor || '#1a56db',
+          vLineColor: () => s.chapterHeadingColor || '#1a56db',
+          paddingLeft: () => 12,
+          paddingRight: () => 12,
+          paddingTop: () => 10,
+          paddingBottom: () => 10,
+        },
+        pageBreak: 'before',
+        margin: [0, 15, 0, 18],
+        // @ts-expect-error — tocItem exists at runtime
+        tocItem: true,
+      });
+    } else if (headerStyle === 'drop-num') {
+      content.push({
+        table: {
+          widths: [50, '*'],
+          body: [
+            [
+              {
+                text: mixedText(paddedNum),
+                fontSize: 34,
+                bold: true,
+                color: s.chapterHeadingColor || '#1a56db',
+                alignment: 'center',
+                margin: [0, 0, 8, 0],
+              },
+              {
+                stack: [
+                  {
+                    text: mixedText(english ? 'Chapter' : 'অধ্যায়'),
+                    fontSize: 9,
+                    color: '#64748b',
+                    bold: true,
+                  },
+                  {
+                    text: mixedText(c.title || 'অধ্যায়'),
+                    fontSize: 20,
+                    bold: true,
+                    color: '#1e293b',
+                    margin: [0, 2, 0, 0],
+                  },
+                ],
+              },
+            ],
+          ],
+        },
+        layout: 'noBorders',
+        pageBreak: 'before',
+        margin: [0, 15, 0, 18],
+        // @ts-expect-error — tocItem exists at runtime
+        tocItem: true,
+      });
+    } else {
+      // Classic
+      const classicStack: Content[] = [
+        {
+          text: mixedText(c.title || 'অধ্যায়'),
+          fontSize: 22,
+          bold: true,
+          color: s.chapterHeadingColor || '#1a56db',
+          margin: [0, 15, 0, s.showChapterDecor ? 6 : 18],
+        },
+      ];
+      if (s.showChapterDecor) {
+        classicStack.push({
+          text: mixedText('❖ — ❖ — ❖'),
+          fontSize: 10,
+          color: '#94a3b8',
+          margin: [0, 0, 0, 14],
+        });
+      }
+      content.push({
+        stack: classicStack,
+        pageBreak: 'before',
+        // @ts-expect-error — tocItem exists at runtime
+        tocItem: true,
+      });
+    }
 
     const blocks = parseChapterContent(c.text || '');
     for (const b of blocks) {
@@ -340,7 +490,7 @@ export function pdfDefinition(project: Project, s: BookSettings): TDocumentDefin
         });
       }
     }
-  }
+  });
 
   const skipHeaderUntil = frontMatterCount(s);
   const marks = s.includeCropMarks ? cropMarkCanvas(s) : [];
@@ -364,8 +514,9 @@ export function pdfDefinition(project: Project, s: BookSettings): TDocumentDefin
           absolutePosition: { x: 0, y: 0 },
         });
       }
-      if (s.runningHeader !== 'none' && page > skipHeaderUntil) {
+      if (page > skipHeaderUntil) {
         const even = page % 2 === 0;
+        const pageNumText = formatStyledPageNumber(page, s.pageNumberStyle || 'plain', s.numberFormat || 'bn');
         const label =
           s.runningHeader === 'author'
             ? s.author
@@ -374,7 +525,51 @@ export function pdfDefinition(project: Project, s: BookSettings): TDocumentDefin
               : even
                 ? project.title
                 : s.author || project.title;
-        if (label) {
+
+        if (pos === 'top-outside') {
+          headerStack.push({
+            columns: [
+              {
+                text: even ? mixedText(pageNumText) : mixedText(label || ''),
+                alignment: 'left',
+                fontSize: 9,
+                color: '#555',
+                bold: even,
+              },
+              {
+                text: even ? mixedText(label || '') : mixedText(pageNumText),
+                alignment: 'right',
+                fontSize: 9,
+                color: '#555',
+                bold: !even,
+              },
+            ],
+            margin: [0, 8, 0, 0],
+          });
+        } else if (pos === 'top-center') {
+          headerStack.push({
+            columns: [
+              {
+                text: mixedText(label || ''),
+                alignment: 'left',
+                fontSize: 8.5,
+                color: '#666',
+              },
+              {
+                text: mixedText(pageNumText),
+                alignment: 'center',
+                fontSize: 9,
+                color: '#444',
+                bold: true,
+              },
+              {
+                text: mixedText(''),
+                alignment: 'right',
+              },
+            ],
+            margin: [0, 8, 0, 0],
+          });
+        } else if (s.runningHeader !== 'none' && label) {
           headerStack.push({
             text: mixedText(label),
             alignment: even ? 'left' : 'right',
@@ -386,15 +581,19 @@ export function pdfDefinition(project: Project, s: BookSettings): TDocumentDefin
       }
       return headerStack.length ? { stack: headerStack } : { text: '' };
     },
-    footer: (page, pages) => {
-      if (page <= 1) return { text: '' };
-      const numStr = s.numberFormat === 'bn' ? toBengaliNumerals(page) : String(page);
-      const totalStr = s.numberFormat === 'bn' ? toBengaliNumerals(pages) : String(pages);
+    footer: (page) => {
+      if (page <= skipHeaderUntil || pos === 'none' || pos.startsWith('top')) {
+        return { text: '' };
+      }
+      const pageNumText = formatStyledPageNumber(page, s.pageNumberStyle || 'plain', s.numberFormat || 'bn');
+      const even = page % 2 === 0;
+      const align = pos === 'bottom-center' ? 'center' : even ? 'left' : 'right';
+
       return {
-        text: mixedText(`${numStr} / ${totalStr}`),
-        alignment: 'center',
+        text: mixedText(pageNumText),
+        alignment: align,
         fontSize: 9.5,
-        color: '#666',
+        color: '#555555',
         margin: [0, 8, 0, 0],
       };
     },
