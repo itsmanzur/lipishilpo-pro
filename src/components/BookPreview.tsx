@@ -978,15 +978,17 @@ export function BookPreview({
                   </div>
 
                   {settings.showBarcode && (
-                    <div
-                      className="back-barcode-container"
-                      dangerouslySetInnerHTML={{
-                        __html: generateEan13Svg(
-                          settings.barcodeNumber || settings.isbn || '9789849123456',
-                          settings.coverPrice || settings.price || '৳ ৩৫০'
-                        ),
-                      }}
-                    />
+                    <div className="back-barcode-container">
+                      <img
+                        alt="EAN-13"
+                        src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(
+                          generateEan13Svg(
+                            settings.barcodeNumber || settings.isbn || '9789849123456',
+                            settings.coverPrice || settings.price || '৳ ৩৫০',
+                          ),
+                        )}`}
+                      />
+                    </div>
                   )}
                 </div>
               </div>

@@ -41,7 +41,7 @@ export function parseChapterContent(rawText: string): BookBlock[] {
       continue;
     }
 
-    // 2. Callout Box :::box[Title] ... ::: or > [!NOTE] or [বক্স: শিরোনাম] ... [/বক্স]
+    // 2. Callout Box :::box[Title] ... ::: or [বক্স: শিরোনাম] ... [/বক্স]
     if (line.startsWith(":::box") || line.startsWith(":::callout") || line.startsWith("[বক্স:")) {
       let title = "বিশেষ দ্রষ্টব্য";
       const titleMatch = line.match(/(?:\[|:::box\[|:::callout\[)([^\]]+)\]/);
@@ -52,14 +52,40 @@ export function parseChapterContent(rawText: string): BookBlock[] {
         if (parts[1]) title = parts[1].replace(/[\]]/g, "").trim();
       }
 
+      const isCalloutClose = (t: string) => {
+        const x = t.trim();
+        return x === ":::" || x === ":::end" || x.startsWith(":::end") || x.includes("[/বক্স]");
+      };
+      const isCalloutOpen = (t: string) => {
+        const x = t.trim();
+        return x.startsWith(":::box") || x.startsWith(":::callout") || x.startsWith("[বক্স:");
+      };
+      const isStructuralBreak = (t: string) => {
+        const x = t.trim();
+        return (
+          x.startsWith("#") ||
+          isCalloutOpen(x) ||
+          /^(\*{3,}|-{3,}|_{3,})$/.test(x) ||
+          /^(তথ্যসূত্র|সূত্র|রেফারেন্স|গ্রন্থপঞ্জি|উৎস|References?|Sources?):/iu.test(x)
+        );
+      };
+
       let boxText = "";
+      let collected = 0;
       i++;
-      while (i < lines.length && !lines[i].startsWith(":::") && !lines[i].includes("[/বক্স]")) {
-        boxText += (boxText ? "\n" : "") + lines[i];
+      while (i < lines.length && collected < 40) {
+        const rawLine = lines[i] ?? "";
+        const t = rawLine.trim();
+        if (isCalloutClose(t)) {
+          i++;
+          break;
+        }
+        if (isStructuralBreak(t)) {
+          break;
+        }
+        boxText += (boxText ? "\n" : "") + rawLine;
         i++;
-      }
-      if (i < lines.length && (lines[i].startsWith(":::") || lines[i].includes("[/বক্স]"))) {
-        i++; // skip closing tag
+        collected++;
       }
 
       // Detect variant from title
