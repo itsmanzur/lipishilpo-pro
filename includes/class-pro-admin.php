@@ -15,6 +15,23 @@ class Lipishilpo_Pro_Admin {
 	public static function init() {
 		add_action( 'lipishilpo_register_admin_settings', array( __CLASS__, 'register_settings' ) );
 		add_action( 'lipishilpo_admin_settings_bottom', array( __CLASS__, 'render_bottom_tools' ) );
+		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_pro_admin_assets' ) );
+	}
+
+	public static function enqueue_pro_admin_assets( $hook ) {
+		if ( false === strpos( $hook, 'lipishilpo' ) ) {
+			return;
+		}
+
+		$css_file = LIPISHILPO_PRO_DIR . 'assets/css/lipishilpo-pro-admin.css';
+		if ( file_exists( $css_file ) ) {
+			wp_enqueue_style(
+				'lipishilpo-pro-admin-style',
+				LIPISHILPO_PRO_URL . 'assets/css/lipishilpo-pro-admin.css',
+				array(),
+				LIPISHILPO_PRO_VERSION
+			);
+		}
 	}
 
 	public static function get_providers() {
@@ -162,7 +179,7 @@ class Lipishilpo_Pro_Admin {
 			)
 		);
 
-		// Settings Sections
+		// Section: Universal AI Settings
 		add_settings_section(
 			'lipishilpo_ai_section',
 			__( 'Universal AI Connectivity Settings (Pro)', 'lipishilpo-pro' ),
@@ -170,6 +187,7 @@ class Lipishilpo_Pro_Admin {
 			'lipishilpo-settings'
 		);
 
+		// Section: Pro License Settings
 		add_settings_section(
 			'lipishilpo_pro_license_section',
 			__( 'Pro License Settings', 'lipishilpo-pro' ),
@@ -233,24 +251,38 @@ class Lipishilpo_Pro_Admin {
 	}
 
 	public static function render_ai_section() {
-		echo '<p>' . esc_html__( 'Connect your preferred AI provider (OpenAI, Google Gemini, Anthropic Claude, OpenRouter, or Custom/Local AI). API keys are stored securely on your local server and power the editorial assistant, story continuity, and character tracking.', 'lipishilpo-pro' ) . '</p>';
+		?>
+		<div class="lipishilpo-section-intro">
+			<p class="lipishilpo-card-subtitle">
+				<?php esc_html_e( 'আপনার পছন্দের AI প্রোভাইডার (OpenAI, Google Gemini, Anthropic Claude, OpenRouter বা Custom/Local AI) যুক্ত করুন। API Key সার্ভারের wp_options টেবিলে সম্পূর্ণ এনক্রিপ্টেড ও সুরক্ষিত থাকে।', 'lipishilpo-pro' ); ?>
+			</p>
+		</div>
+		<?php
 	}
 
 	public static function render_license_section() {
-		echo '<p>' . esc_html__( 'Enter your Lipishilpo Pro license key to activate updates and premium features.', 'lipishilpo-pro' ) . '</p>';
+		?>
+		<div class="lipishilpo-section-intro" style="margin-top: 24px; padding-top: 18px; border-top: 1px solid #f1f5f9;">
+			<div class="lipishilpo-card-header" style="margin-bottom: 8px;">
+				<div class="lipishilpo-card-header-icon" style="background: #eff6ff; color: #1d4ed8; border-color: #dbeafe;">🔑</div>
+				<h2 class="lipishilpo-card-title"><?php esc_html_e( 'লিপিশিল্প প্রো লাইসেন্স ও অটো-আপডেট', 'lipishilpo-pro' ); ?></h2>
+			</div>
+			<p class="lipishilpo-card-subtitle">
+				<?php esc_html_e( 'lipishilpo.com থেকে প্রাপ্ত প্রো লাইসেন্স কি প্রবেশ করিয়ে সমস্ত প্রিমিয়াম ফিচার সক্রিয় রাখুন।', 'lipishilpo-pro' ); ?>
+			</p>
+		</div>
+		<?php
 	}
 
 	public static function sanitize_ai_key( $value ) {
 		$value = sanitize_text_field( $value );
 		if ( $value === '' ) {
-			// Keep existing key if blank was submitted
 			$current = (string) get_option( 'lipishilpo_ai_key', '' );
 			if ( $current === '' ) {
 				$current = (string) get_option( 'lipishilpo_openai_key', '' );
 			}
 			return $current;
 		}
-		// Also update legacy option for full backward compatibility
 		update_option( 'lipishilpo_openai_key', $value );
 		return $value;
 	}
@@ -269,7 +301,7 @@ class Lipishilpo_Pro_Admin {
 		$provider  = get_option( 'lipishilpo_ai_provider', 'openai' );
 		$providers = self::get_providers();
 		?>
-		<select id="lipishilpo_ai_provider" name="lipishilpo_ai_provider" style="min-width: 320px; font-weight: 500;">
+		<select id="lipishilpo_ai_provider" name="lipishilpo_ai_provider" style="min-width: 320px; font-weight: 600;">
 			<?php foreach ( $providers as $key => $data ) : ?>
 				<option value="<?php echo esc_attr( $key ); ?>" <?php selected( $provider, $key ); ?>>
 					<?php echo esc_html( $data['name'] ); ?>
@@ -277,7 +309,7 @@ class Lipishilpo_Pro_Admin {
 			<?php endforeach; ?>
 		</select>
 		<p class="description">
-			<?php esc_html_e( 'Select the AI provider you wish to use for editorial analysis and proofreading.', 'lipishilpo-pro' ); ?>
+			<?php esc_html_e( 'সাহিত্যিক প্রুফরিড ও চ্যাপ্টার বিশ্লেষণের জন্য পছন্দের AI প্রোভাইডার নির্বাচন করুন।', 'lipishilpo-pro' ); ?>
 		</p>
 		<?php
 	}
@@ -293,18 +325,20 @@ class Lipishilpo_Pro_Admin {
 		}
 		$masked = $value ? substr( $value, 0, 8 ) . str_repeat( '•', 18 ) : '';
 		?>
-		<input
-			type="password"
-			id="lipishilpo_ai_key"
-			name="lipishilpo_ai_key"
-			value=""
-			class="regular-text"
-			placeholder="<?php echo $value ? esc_attr__( 'Leave blank to keep current saved key', 'lipishilpo-pro' ) : esc_attr( $info['key_placeholder'] ); ?>"
-			autocomplete="new-password"
-		/>
+		<div style="position: relative; max-width: 480px;">
+			<input
+				type="password"
+				id="lipishilpo_ai_key"
+				name="lipishilpo_ai_key"
+				value=""
+				class="regular-text"
+				placeholder="<?php echo $value ? esc_attr__( 'বর্তমান সংরক্ষিত কি অপরিবর্তিত রাখতে ফাঁকা রাখুন', 'lipishilpo-pro' ) : esc_attr( $info['key_placeholder'] ); ?>"
+				autocomplete="new-password"
+			/>
+		</div>
 		<?php if ( $masked ) : ?>
 			<p class="description" id="lipishilpo_current_key_display">
-				<?php esc_html_e( 'Current saved key:', 'lipishilpo-pro' ); ?>
+				<?php esc_html_e( 'বর্তমান সংরক্ষিত কি:', 'lipishilpo-pro' ); ?>
 				<code><?php echo esc_html( $masked ); ?></code>
 			</p>
 		<?php endif; ?>
@@ -314,12 +348,12 @@ class Lipishilpo_Pro_Admin {
 				if ( ! empty( $info['doc_url'] ) ) {
 					printf(
 						/* translators: 1: Provider name, 2: Provider URL */
-						esc_html__( 'Obtain your %1$s API key from %2$s.', 'lipishilpo-pro' ),
+						esc_html__( '%1$s API Key সংগ্রহ করতে %2$s-এ যান।', 'lipishilpo-pro' ),
 						esc_html( $info['name'] ),
 						'<a id="lipishilpo_key_link" href="' . esc_url( $info['doc_url'] ) . '" target="_blank" rel="noopener">' . esc_html( $info['doc_text'] ) . '</a>'
 					);
 				} else {
-					esc_html_e( 'Enter your endpoint authentication token or API key (if required).', 'lipishilpo-pro' );
+					esc_html_e( 'আপনার এন্ডপয়েন্টের অথেনটিকেশন টোকেন বা এপিআই কি দিন (যদি প্রযোজ্য হয়)।', 'lipishilpo-pro' );
 				}
 				?>
 			</span>
@@ -328,8 +362,7 @@ class Lipishilpo_Pro_Admin {
 	}
 
 	public static function render_base_url_field() {
-		$provider = get_option( 'lipishilpo_ai_provider', 'openai' );
-		$value    = get_option( 'lipishilpo_ai_base_url', '' );
+		$value = get_option( 'lipishilpo_ai_base_url', '' );
 		?>
 		<div id="lipishilpo_base_url_row">
 			<input
@@ -341,7 +374,7 @@ class Lipishilpo_Pro_Admin {
 				placeholder="https://api.deepseek.com/chat/completions or http://localhost:11434/v1/chat/completions"
 			/>
 			<p class="description">
-				<?php esc_html_e( 'Specify the complete chat completions endpoint URL for Custom / Local / Proxy AI.', 'lipishilpo-pro' ); ?>
+				<?php esc_html_e( 'কাস্টম, লোকাল AI বা নিজস্ব প্রক্সি সার্ভারের সম্পূর্ণ Chat Completions এন্ডপয়েন্ট URL দিন।', 'lipishilpo-pro' ); ?>
 			</p>
 		</div>
 		<?php
@@ -365,7 +398,7 @@ class Lipishilpo_Pro_Admin {
 			<?php endforeach; ?>
 		</select>
 		<p class="description">
-			<?php esc_html_e( 'Select the AI model optimized for literary nuance, proofreading, and reasoning.', 'lipishilpo-pro' ); ?>
+			<?php esc_html_e( 'বাংলা সাহিত্যের ছন্দ ও জটিল প্লট বিশ্লেষণের জন্য প্রস্তুত মডেল নির্বাচন করুন।', 'lipishilpo-pro' ); ?>
 		</p>
 		<?php
 	}
@@ -383,7 +416,7 @@ class Lipishilpo_Pro_Admin {
 				placeholder="e.g., deepseek-chat, mistral-large-latest, llama3.3:70b"
 			/>
 			<p class="description">
-				<?php esc_html_e( 'Enter the exact model identifier if selecting a custom model or using an external endpoint.', 'lipishilpo-pro' ); ?>
+				<?php esc_html_e( 'কাস্টম মডেলের সঠিক আইডেন্টিফায়ার বা নাম লিখুন।', 'lipishilpo-pro' ); ?>
 			</p>
 		</div>
 		<?php
@@ -405,9 +438,9 @@ class Lipishilpo_Pro_Admin {
 		<p class="description">
 			<?php
 			if ( $value && $status === 'valid' ) {
-				esc_html_e( 'License key is saved and Pro features are unlocked.', 'lipishilpo-pro' );
+				esc_html_e( '✅ লাইসেন্স কি সংরক্ষিত এবং সমস্ত প্রো ফিচার আনলক করা রয়েছে।', 'lipishilpo-pro' );
 			} else {
-				esc_html_e( 'Enter the Pro license key obtained from lipishilpo.com. Features stay locked until a key is saved.', 'lipishilpo-pro' );
+				esc_html_e( 'lipishilpo.com থেকে কেনা প্রো লাইসেন্স কি এখানে দিন।', 'lipishilpo-pro' );
 			}
 			?>
 		</p>
@@ -417,18 +450,24 @@ class Lipishilpo_Pro_Admin {
 	public static function render_bottom_tools() {
 		$providers = self::get_providers();
 		?>
-		<div class="card" style="max-width: 800px; margin-top: 25px; padding: 20px 24px;">
-			<h2 style="margin-top: 0; display: flex; align-items: center; gap: 8px;">
-				<span>⚡</span>
-				<?php esc_html_e( 'Universal AI Connection Test', 'lipishilpo-pro' ); ?>
-			</h2>
-			<p>
-				<?php esc_html_e( 'Verify server-to-server connectivity with your active AI provider before running editorial analysis:', 'lipishilpo-pro' ); ?>
-			</p>
-			<button id="lipishilpo-test-api" class="button button-secondary" type="button">
-				<?php esc_html_e( 'Test Connection', 'lipishilpo-pro' ); ?>
-			</button>
-			<span id="lipishilpo-test-result" style="margin-left: 12px; font-weight: 500;"></span>
+		<div class="lipishilpo-tester-box">
+			<div class="lipishilpo-tester-header">
+				<div>
+					<h3 class="lipishilpo-tester-title">
+						<span>⚡</span> <?php esc_html_e( 'রিয়েলটাইম AI কানেকশন চেকার (Connection Tester)', 'lipishilpo-pro' ); ?>
+					</h3>
+					<p class="description" style="margin-top: 4px;">
+						<?php esc_html_e( 'সেটিংস সেভ করার পর নির্বাচিত প্রোভাইডারের সাথে সার্ভার হ্যান্ডশেক যাচাই করুন:', 'lipishilpo-pro' ); ?>
+					</p>
+				</div>
+				<button id="lipishilpo-test-api" class="lipishilpo-test-btn" type="button">
+					<span>📡</span> <?php esc_html_e( 'Test Connection', 'lipishilpo-pro' ); ?>
+				</button>
+			</div>
+
+			<div id="lipishilpo-test-result-container" class="lipishilpo-test-result-box">
+				<span id="lipishilpo-test-result"></span>
+			</div>
 
 			<script>
 			(function() {
@@ -481,9 +520,9 @@ class Lipishilpo_Pro_Admin {
 
 					if (keyGuide) {
 						if (info.doc_url) {
-							keyGuide.innerHTML = 'Obtain your ' + info.name + ' API key from <a href="' + info.doc_url + '" target="_blank" rel="noopener">' + info.doc_text + '</a>.';
+							keyGuide.innerHTML = info.name + ' API Key সংগ্রহ করতে <a href="' + info.doc_url + '" target="_blank" rel="noopener">' + info.doc_text + '</a>-এ যান।';
 						} else {
-							keyGuide.textContent = 'Enter your endpoint authentication token or API key (if required).';
+							keyGuide.textContent = 'আপনার এন্ডপয়েন্টের অথেনটিকেশন টোকেন বা এপিআই কি দিন (যদি প্রযোজ্য হয়)।';
 						}
 					}
 				}
@@ -508,10 +547,15 @@ class Lipishilpo_Pro_Admin {
 				// Connection Test
 				document.getElementById('lipishilpo-test-api')?.addEventListener('click', async function() {
 					const btn = this;
+					const box = document.getElementById('lipishilpo-test-result-container');
 					const result = document.getElementById('lipishilpo-test-result');
+					if (!box || !result) return;
+
 					btn.disabled = true;
-					result.textContent = 'Testing connection…';
-					result.style.color = '#666';
+					btn.innerHTML = '<span>⏳</span> ' + '<?php echo esc_js( __( 'যাচাই করা হচ্ছে...', 'lipishilpo-pro' ) ); ?>';
+					box.className = 'lipishilpo-test-result-box active loading';
+					result.textContent = '📡 সার্ভারের সাথে সংযোগ পরীক্ষা করা হচ্ছে, অনুগ্রহ করে অপেক্ষা করুন…';
+
 					try {
 						const resp = await fetch('<?php echo esc_url( get_rest_url( null, 'lipishilpo/v1/analyze/test' ) ); ?>', {
 							method: 'POST',
@@ -520,17 +564,18 @@ class Lipishilpo_Pro_Admin {
 						const data = await resp.json();
 						if (data.ok) {
 							const provName = (data.provider || '').toUpperCase();
-							result.textContent = '✅ ' + provName + ' connection successful! Active model: ' + (data.model || '');
-							result.style.color = '#155724';
+							box.className = 'lipishilpo-test-result-box active success';
+							result.textContent = '✅ ' + provName + ' সংযোগ সফল! সক্রিয় মডেল: ' + (data.model || '');
 						} else {
-							result.textContent = '❌ ' + (data.message || 'API key is not configured or invalid.');
-							result.style.color = '#721c24';
+							box.className = 'lipishilpo-test-result-box active error';
+							result.textContent = '❌ ' + (data.message || 'API কি কনফিগার করা হয়নি বা ইনভ্যালিড।');
 						}
 					} catch (e) {
-						result.textContent = '❌ Connection test failed.';
-						result.style.color = '#721c24';
+						box.className = 'lipishilpo-test-result-box active error';
+						result.textContent = '❌ সার্ভারের সাথে সংযোগ স্থাপন করা সম্ভব হয়নি।';
 					} finally {
 						btn.disabled = false;
+						btn.innerHTML = '<span>📡</span> ' + '<?php echo esc_js( __( 'Test Connection', 'lipishilpo-pro' ) ); ?>';
 					}
 				});
 			})();
