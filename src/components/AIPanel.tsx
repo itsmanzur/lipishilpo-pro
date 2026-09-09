@@ -104,7 +104,7 @@ export function AIPanel({
         throw new Error(
           lang === 'bn'
             ? 'AI সংযোগ এখনো সক্রিয় নয়। সেটিংসে API key যোগ করুন।'
-            : 'AI connection is not active yet. Please add your OpenAI API key in settings.'
+            : 'AI connection is not active yet. Please add your AI API key in settings.'
         );
       }
 

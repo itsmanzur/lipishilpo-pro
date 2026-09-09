@@ -100,10 +100,13 @@ graph TD
 
 ---
 
-## 🤖 ৪. এআই এডিটোরিয়াল ও অডিও প্রুফরিডার (AI Companion & TTS)
+## 🤖 ৪. ইউনিভার্সাল এআই এডিটোরিয়াল ও অডিও প্রুফরিডার (Universal AI & TTS)
 
-1. **OpenAI GPT-4o এডিটোরিয়াল অ্যাসিস্ট্যান্ট (`AIPanel.tsx`):**
-   - সাহিত্যিক প্রুফরিডিং (Proofread Mode), দৃশ্যের গতি ও টেনশন বিশ্লেষণ (Chapter Arc Mode), এবং পুরো উপন্যাসের প্লটহোল ও চরিত্রের ধারাবাহিকতা নিরীক্ষা (Whole-Book Continuity)।
+1. **ইউনিভার্সাল এআই এডিটোরিয়াল অ্যাসিস্ট্যান্ট (`AIPanel.tsx`):**
+   - **মাল্টি-প্রোভাইডার স্বাধীনতা:** OpenAI (GPT-4o, GPT-4o Mini), Google Gemini (Gemini 2.5 Flash, 2.0 Flash, 1.5 Pro), Anthropic Claude (Claude 3.7 Sonnet, 3.5 Sonnet, 3.5 Haiku), OpenRouter (DeepSeek R1/V3, Llama 3.3, Mistral) বা যেকোনো কাস্টম/লোকাল AI এন্ডপয়েন্ট।
+   - **সাহিত্যিক প্রুফরিডিং (Proofread Mode):** ব্যাকরণ, যতিচিহ্ন ও শব্দচয়নের অসঙ্গতি দূরীকরণ।
+   - **দৃশ্যের গতি ও টেনশন বিশ্লেষণ (Chapter Arc Mode):** দৃশ্যের ছন্দপতন, চরিত্রের মোটিভেশন এবং বর্ণনার সুর নিরীক্ষা।
+   - **পুরো উপন্যাসের প্লটহোল ও ধারাবাহিকতা (Whole-Book Continuity):** চরিত্র, বয়স, টাইমলাইন ও ঘটনার সংঘাত স্বয়ংক্রিয়ভাবে শনাক্তকরণ।
 2. **Text-to-Speech (TTS) অডিও প্রুফরিডার (`AudioProofreader.tsx`):**
    - বাংলা নিউরাল ভয়েসে পুরো চ্যাপ্টার পাঠ, রিয়েলটাইম সেন্টেন্স ফোকাস কার্সার এবং মাল্টি-স্পিড প্লেব্যাক।
 
@@ -113,9 +116,9 @@ graph TD
 
 | মেথড | এন্ডপয়েন্ট | পারমিশন | কাজ |
 | :--- | :--- | :--- | :--- |
-| `GET` | `/wp-json/lipishilpo/v1/analyze` | `edit_posts` + valid license | AI এপিআই কি ও মডেল কনফিগারেশন স্ট্যাটাস চেক |
-| `POST` | `/wp-json/lipishilpo/v1/analyze` | `edit_posts` + valid license + hourly rate limit | প্রুফরিড, চ্যাপ্টার এনালাইসিস এবং হোল-বুক ধারাবাহিকতা পরীক্ষা |
-| `POST` | `/wp-json/lipishilpo/v1/analyze/test` | `manage_options` | OpenAI কানেকশন পিং |
+| `GET` | `/wp-json/lipishilpo/v1/analyze` | `edit_posts` + valid license | AI প্রোভাইডার, এপিআই কি ও মডেল কনফিগারেশন স্ট্যাটাস চেক |
+| `POST` | `/wp-json/lipishilpo/v1/analyze` | `edit_posts` + valid license + hourly rate limit | প্রুফরিড, চ্যাপ্টার এনালাইসিস এবং হোল-বুক ধারাবাহিকতা পরীক্ষা (OpenAI/Gemini/Claude/OpenRouter/Custom) |
+| `POST` | `/wp-json/lipishilpo/v1/analyze/test` | `manage_options` | সক্রিয় যেকোনো AI প্রোভাইডারের সাথে সরাসরি হ্যান্ডশেক ও কানেকশন টেস্ট |
 | `GET` | `/wp-json/lipishilpo/v1/export/status` | `edit_posts` | লাইসেন্স ও ফন্ট-ভিত্তিক DOCX/PDF/EPUB স্ট্যাটাস |
 
 ---
@@ -140,7 +143,7 @@ graph TD
 | **১-ক্লিক প্রিফ্লাইট কোয়ালিটি চেকার (Preflight Inspector)** | ❌ | ✅ |
 | **বাস্তবধর্মী ২-পেজ স্প্রেড ও সেফ জোন ওভারলে** | ❌ | ✅ |
 | **রিয়েল-টাইম ৩ডি বুক মকআপ সিমুলেশন** | ❌ | ✅ |
-| **OpenAI GPT-4o সাহিত্যিক প্রুফরিডিং ও ধারাবাহিকতা** | ❌ | ✅ |
+| **ইউনিভার্সাল AI (OpenAI, Gemini, Claude, DeepSeek) এডিটিং** | ❌ | ✅ |
 | **Text-to-Speech (TTS) অডিও প্রুফরিডার** | ❌ | ✅ |
 | **Word (.docx) এক্সপোর্ট (বুক লেআউট)** | ❌ | ✅ |
 | **প্রেস-রেডি PDF (ক্রপ মার্ক ও ব্লিড)** | ❌ | ✅ |
