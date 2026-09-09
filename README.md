@@ -1,6 +1,6 @@
 # 🌟 Lipishilpo Pro (লিপিশিল্প প্রো) - Book Get-Up Studio, AI Editorial & Publication Powerhouse
 
-**Lipishilpo Pro** is the premium companion add-on for the [Lipishilpo](https://github.com/itsmanzur/lipishilpo) WordPress plugin. It transforms WordPress into an OS-grade **Book Get-Up Studio**, complete with 4-pillar layout engineering, dynamic page numbering, 5 pre-styled Table of Contents presets, paper GSM spine calculators, full wrap cover artboards, EAN-13 ISBN barcodes, 1-click Preflight Quality Inspector, realistic 2-page spread & 3D mockup live preview, deep OpenAI GPT-4o literary analysis, and press-ready CMYK PDF / EPUB 3.0 / MOBI exports.
+**Lipishilpo Pro** is the premium companion add-on for the [Lipishilpo](https://github.com/itsmanzur/lipishilpo) WordPress plugin. It transforms WordPress into an OS-grade **Book Get-Up Studio**, complete with 4-pillar layout engineering, dynamic page numbering, 5 pre-styled Table of Contents presets, paper GSM spine calculators, full wrap cover artboards, EAN-13 ISBN barcodes, 1-click Preflight Quality Inspector, realistic 2-page spread & 3D mockup live preview, deep OpenAI GPT-4o literary analysis, and press-ready PDF / EPUB 3.0 / Word (.docx) exports.
 
 ---
 
@@ -18,7 +18,7 @@
   - **Vector EAN-13 Barcode & Price Tag:** Automated back cover ISBN barcode generator with localized price tags.
 - **Pillar 4: Preflight Quality Check & Press-Ready Exports:**
   - **1-Click Preflight Inspector:** Instant scanning for safe zone violations (3mm cutting edge safety), bleed errors, text overflow, font embeddings, and page signature imposition.
-  - **Multi-Format Export Engine:** Press-Ready CMYK PDF with crop marks, standard EPUB 3.0, Kindle MOBI, and Microsoft Word (.docx).
+  - **Multi-Format Export Engine:** Press-ready PDF with crop marks, standard EPUB 3.0, and Microsoft Word (.docx). Kindle/tablet/mobile are preview modes in the studio, not separate MOBI files.
 
 ### 2. 🖥️ Interactive Live Preview & 3D Mockup Engine
 - **Realistic 2-Page Spread:** Side-by-side even/odd page layout with page-turn curves and binding shadows.
