@@ -15,7 +15,20 @@ interface Report {
   summary: string; strengths: string[]; findings: Finding[];
   caveats: string[]; rejectedEvidence?: number;
 }
-interface Result { report: Report; source: string; model: string; parts: number; mode: Mode; }
+interface Result { report: Report; source: string; model: string; provider?: string; parts: number; mode: Mode; }
+
+function providerLabel(id: string | undefined, lang: Language) {
+  const key = (id || '').toLowerCase();
+  const names: Record<string, { bn: string; en: string }> = {
+    openai: { bn: 'OpenAI', en: 'OpenAI' },
+    gemini: { bn: 'Google Gemini', en: 'Google Gemini' },
+    claude: { bn: 'Anthropic Claude', en: 'Anthropic Claude' },
+    anthropic: { bn: 'Anthropic Claude', en: 'Anthropic Claude' },
+    openrouter: { bn: 'OpenRouter', en: 'OpenRouter' },
+    custom: { bn: 'কাস্টম এন্ডপয়েন্ট', en: 'Custom endpoint' },
+  };
+  return names[key]?.[lang] || id || '';
+}
 
 const categoryLabels: Record<Language, Record<string, string>> = {
   en: {
@@ -65,6 +78,7 @@ export function AIPanel({
 
   const [mode, setMode] = useState<Mode>(defaultMode);
   const [configured, setConfigured] = useState<boolean | null>(null);
+  const [provider, setProvider] = useState('');
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState('');
   const [error, setError] = useState('');
@@ -79,7 +93,10 @@ export function AIPanel({
     if (!isPro) return;
     const c = new AbortController();
     fetchAnalyzeStatus()
-      .then((d) => setConfigured(d.configured))
+      .then((d) => {
+        setConfigured(d.configured);
+        setProvider(d.provider || '');
+      })
       .catch(() => setConfigured(false));
     return () => { c.abort(); controller.current?.abort(); };
   }, [isPro]);
@@ -100,6 +117,7 @@ export function AIPanel({
 
       const status = await fetchAnalyzeStatus();
       setConfigured(status.configured);
+      setProvider(status.provider || '');
       if (!status.configured) {
         throw new Error(
           lang === 'bn'
@@ -162,7 +180,7 @@ export function AIPanel({
       }
 
       if (c.signal.aborted) return;
-      setResult({ report, source: snapshot(src), model, parts: parts.length, mode });
+      setResult({ report, source: snapshot(src), model, provider: status.provider, parts: parts.length, mode });
       setDismissed([]);
       setProgress(t.analysisComplete);
     } catch (e) {
@@ -215,7 +233,11 @@ export function AIPanel({
   return (
     <div className="analysis ai-panel">
       <span className={'preview-label ' + (configured ? 'connected' : '')}>
-        {configured ? t.aiConnected : configured === null ? t.aiChecking : t.aiDisconnected}
+        {configured
+          ? `${t.aiConnected}${provider ? ` · ${providerLabel(provider, lang)}` : ''}`
+          : configured === null
+            ? t.aiChecking
+            : t.aiDisconnected}
       </span>
       <h3>{defaultMode === 'proofread' ? t.aiHeadingProof : t.aiHeadingDeep}</h3>
 
@@ -264,7 +286,10 @@ export function AIPanel({
       {result && (
         <>
           <div className="report-meta">
-            {result.model} · {lang === 'bn' ? `${result.parts.toLocaleString('bn-BD')} অংশ` : `${result.parts} part(s)`}
+            {[providerLabel(result.provider || provider, lang), result.model]
+              .filter(Boolean)
+              .join(' · ')}{' '}
+            · {lang === 'bn' ? `${result.parts.toLocaleString('bn-BD')} অংশ` : `${result.parts} part(s)`}
           </div>
           {stale && (
             <p className="stale-warning">

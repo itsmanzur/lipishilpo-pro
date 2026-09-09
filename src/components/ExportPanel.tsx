@@ -44,7 +44,12 @@ export function ExportPanel({
   useEffect(() => {
     try {
       localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
-    } catch {}
+    } catch {
+      try {
+        const slim = { ...settings, coverFrontImage: '', coverBackImage: '' };
+        localStorage.setItem(SETTINGS_KEY, JSON.stringify(slim));
+      } catch {}
+    }
   }, [settings]);
 
   function patch(partial: Partial<BookSettings>) {
@@ -78,7 +83,7 @@ export function ExportPanel({
           type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
         });
       } else {
-        const fonts = await loadFonts();
+        const fonts = await loadFonts(s.fontFamily);
         if (format === 'pdf') blob = await makePdf(source, s, fonts);
         else if (format === 'cover') blob = await makeCoverPdf(source, s, fonts);
         else blob = new Blob([new Uint8Array(makeEpub(source, s, fonts))], { type: 'application/epub+zip' });
@@ -133,9 +138,13 @@ export function ExportPanel({
           </div>
         </div>
         <p className="hero-card-desc">
-          {lang === 'bn'
-            ? '১-ক্লিক থিম, ফন্ট সাইজ, মার্জিন, ড্রপ ক্যাপ এবং পূর্ণাঙ্গ বই সাজাতে স্টুডিও ওপেন করুন।'
-            : 'Configure 1-click genre themes, margins, drop caps, and front/back matter.'}
+          {isPro
+            ? (lang === 'bn'
+              ? '১-ক্লিক থিম, ফন্ট সাইজ, মার্জিন, কভার ছবি, ড্রপ ক্যাপ এবং পূর্ণাঙ্গ বই সাজাতে স্টুডিও ওপেন করুন।'
+              : 'Configure themes, fonts, margins, cover art, drop caps, and front/back matter.')
+            : (lang === 'bn'
+              ? 'লাইসেন্স ছাড়া স্টুডিও খোলা যায় (ডেমো)। ফন্ট, কভার ছবি ও লেআউট দেখুন — PDF/DOCX/EPUB ডাউনলোড লাইসেন্সে।'
+              : 'Open as a demo without a license. Preview fonts, cover art, and layout — PDF/DOCX/EPUB download needs Pro.')}
         </p>
         <button
           type="button"
@@ -163,7 +172,7 @@ export function ExportPanel({
           <button
             className={'primary full' + (!isPro ? ' pro-locked' : '')}
             key={f}
-            disabled={!!busy}
+            disabled={!!busy || !isPro}
             onClick={() => exportFile(f)}
           >
             {isPro ? <Download size={15} /> : <Lock size={15} />}

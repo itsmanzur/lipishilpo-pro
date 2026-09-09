@@ -217,7 +217,7 @@ export const translations = {
     aiModeChapter: 'Selected Chapter: Structure & Reader Reaction',
     aiModeBook: 'Full Book: Continuity & Timeline Consistency',
     aiPrivacyNote:
-      'Running analysis will securely send the text to OpenAI. Your manuscript will never change automatically.',
+      'Running analysis sends this text to the AI provider saved in Settings (OpenAI, Gemini, Claude, OpenRouter, or custom). The manuscript is not changed automatically.',
     btnStartAnalysis: 'Start Analysis',
     btnReanalyze: 'Re-analyze',
     btnStopAnalysis: 'Stop',
@@ -249,7 +249,7 @@ export const translations = {
     // Tab 5: Export Panel (Pro)
     exportHeading: 'Publication Layout & Export',
     exportSubtitle: 'Set get-up, preview facing pages, then export interior, cover, DOCX, or EPUB.',
-    proExportNotice: 'DOCX, PDF, and EPUB exports require Lipishilpo Pro.',
+    proExportNotice: 'Studio preview is a demo. DOCX, PDF, and EPUB download need Lipishilpo Pro.',
     proActivateLink: 'Activate Pro',
     authorLabel: 'Author Name',
     authorPlaceholder: 'Author Name',
@@ -268,7 +268,7 @@ export const translations = {
     loadMoreProjects: 'Load more manuscripts',
     generatingFile: 'Generating file…',
     exportFontNote:
-      'PDF and EPUB include embedded Bengali fonts. For DOCX, install Noto Serif Bengali for matching layout.',
+      'PDF and EPUB embed the body font chosen in the studio (Noto Serif Bengali, Hind Siliguri, or Tiro Bangla). Word uses that same font name — install it on the computer to match.',
     btnDownloadFont: 'Download Bengali Font',
     clientSideExportNote:
       'Files are generated directly in your browser; your manuscript is not sent to AI for formatting.',
@@ -528,7 +528,7 @@ export const translations = {
     aiModeChapter: 'নির্বাচিত অধ্যায়: কাঠামো ও পাঠক',
     aiModeBook: 'পুরো বই: ধারাবাহিকতা পরীক্ষা',
     aiPrivacyNote:
-      'বিশ্লেষণ চালালে সংশ্লিষ্ট লেখা OpenAI-তে যাবে। মূল লেখা স্বয়ংক্রিয়ভাবে বদলাবে না।',
+      'বিশ্লেষণ চালালে সংশ্লিষ্ট লেখা সেটিংসে সেভ করা AI প্রোভাইডারে যাবে (OpenAI, Gemini, Claude, OpenRouter বা কাস্টম)। মূল লেখা স্বয়ংক্রিয়ভাবে বদলাবে না।',
     btnStartAnalysis: 'বিশ্লেষণ শুরু করুন',
     btnReanalyze: 'আবার বিশ্লেষণ করুন',
     btnStopAnalysis: 'বন্ধ করুন',
@@ -560,7 +560,7 @@ export const translations = {
     // Tab 5: Export Panel (Pro)
     exportHeading: 'প্রকাশনার জন্য সাজিয়ে নিন',
     exportSubtitle: 'গেটআপ সাজান, দুই পাতা প্রিভিউ দেখুন, তারপর ভিতর/প্রচ্ছদ/DOCX/EPUB নিন।',
-    proExportNotice: 'DOCX, PDF ও EPUB রপ্তানি Pro সুবিধা।',
+    proExportNotice: 'স্টুডিও প্রিভিউ ডেমো। DOCX, PDF ও EPUB ডাউনলোড Pro লাইসেন্সে।',
     proActivateLink: 'Pro সক্রিয় করুন',
     authorLabel: 'লেখকের নাম',
     authorPlaceholder: 'লেখকের নাম',
@@ -579,7 +579,7 @@ export const translations = {
     loadMoreProjects: 'আরও পাণ্ডুলিপি দেখুন',
     generatingFile: 'ফাইল তৈরি হচ্ছে…',
     exportFontNote:
-      'PDF ও EPUB-এ বাংলা ফন্ট যুক্ত থাকে। Word-এ একই বিন্যাস পেতে Noto Serif Bengali ফন্ট ইনস্টল করুন।',
+      'PDF ও EPUB-এ স্টুডিওতে বেছে নেওয়া বাংলা ফন্ট এমবেড হয় (Noto Serif Bengali, Hind Siliguri বা Tiro Bangla)। Word-এ একই নাম ব্যবহার হয় — মিল রাখতে সেই ফন্ট কম্পিউটারে ইনস্টল করুন।',
     btnDownloadFont: 'বাংলা ফন্ট ডাউনলোড',
     clientSideExportNote:
       'ফাইল এই ব্রাউজারেই তৈরি হয়; রপ্তানির জন্য লেখা AI-তে পাঠানো হয় না।',

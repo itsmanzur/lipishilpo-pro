@@ -19,6 +19,7 @@ import {
   ShieldCheck,
   QrCode,
   Feather,
+  ImagePlus,
 } from 'lucide-react';
 import type { Project } from '../api';
 import { fetchExportStatus } from '../api';
@@ -47,6 +48,9 @@ import {
   runPreflightInspection,
   generateEan13Svg,
 } from '../lib/book-layout';
+import { BOOK_FONTS } from '../lib/book-fonts';
+import { compressCoverFile } from '../lib/cover-image';
+import { countUnclosedCallouts } from '../lib/book-parser';
 import { BookPreview } from './BookPreview';
 
 export function BookStudioModal({
@@ -82,6 +86,19 @@ export function BookStudioModal({
     onSaveSettings(updated);
   }
 
+  async function onCoverFile(kind: 'front' | 'back', file: File | undefined) {
+    if (!file) return;
+    try {
+      const dataUrl = await compressCoverFile(file);
+      patch(kind === 'front' ? { coverFrontImage: dataUrl } : { coverBackImage: dataUrl });
+    } catch (e) {
+      setStatusMsg({
+        text: e instanceof Error ? e.message : (lang === 'bn' ? 'ছবি তোলা যায়নি।' : 'Could not read image.'),
+        type: 'error',
+      });
+    }
+  }
+
   function applyTheme(themeKey: BookThemePreset) {
     const theme = BOOK_THEMES[themeKey];
     if (!theme) return;
@@ -95,7 +112,9 @@ export function BookStudioModal({
   const estimatedPages = estimatePageCount(totalChars, settings);
   const calculatedSpine = calculateSpineMm(estimatedPages, settings.paperGsm);
   const chapterCount = project.chapters?.length || 1;
-  const preflight = runPreflightInspection(settings, totalChars, chapterCount);
+  const unclosedBoxes = countUnclosedCallouts(project.chapters || []);
+  const preflight = runPreflightInspection(settings, totalChars, chapterCount, unclosedBoxes);
+  const checksClear = preflight.issues.every((i) => i.type !== 'error' && i.type !== 'warning');
 
   async function exportFile(format: 'docx' | 'pdf' | 'epub' | 'cover') {
     setBusy(format);
@@ -123,7 +142,7 @@ export function BookStudioModal({
           type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
         });
       } else {
-        const fonts = await loadFonts();
+        const fonts = await loadFonts(s.fontFamily);
         if (format === 'pdf') blob = await makePdf(source, s, fonts);
         else if (format === 'cover') blob = await makeCoverPdf(source, s, fonts);
         else blob = new Blob([new Uint8Array(makeEpub(source, s, fonts))], { type: 'application/epub+zip' });
@@ -153,23 +172,24 @@ export function BookStudioModal({
             <span className="modal-badge-pro">PRO STUDIO</span>
             <h2>{lang === 'bn' ? 'বুক গেট-আপ ও পাবলিকেশন স্টুডিও' : 'Book Get-up & Publication Studio'}</h2>
             <span className="project-tag">{project.title || (lang === 'bn' ? 'নতুন বই' : 'Untitled Book')}</span>
+            {!isPro && (
+              <span className="modal-badge-pro" style={{ background: '#92400e' }}>
+                {lang === 'bn' ? 'ডেমো — এক্সপোর্ট লাইসেন্সে' : 'Demo — export needs license'}
+              </span>
+            )}
 
             {/* Preflight Health Pill */}
             <button
               type="button"
-              className={`preflight-pill-btn ${preflight.isPressReady ? 'pass' : 'warning'}`}
+              className={`preflight-pill-btn ${checksClear ? 'pass' : 'warning'}`}
               onClick={() => setShowPreflight(!showPreflight)}
-              title={lang === 'bn' ? 'প্রেস-রেডি ইন্সপেকশন বিস্তারিত দেখুন' : 'View Pre-flight Press Inspection'}
+              title={lang === 'bn' ? 'লেআউট চেকলিস্ট দেখুন' : 'View layout checklist'}
             >
               <ShieldCheck size={14} />
               <span>
-                {preflight.isPressReady
-                  ? lang === 'bn'
-                    ? `প্রেস-রেডি ১০০%`
-                    : `Press Ready 100%`
-                  : lang === 'bn'
-                    ? `ইন্সপেকশন ${preflight.score}%`
-                    : `Inspection ${preflight.score}%`}
+                {lang === 'bn'
+                  ? `লেআউট চেক ${preflight.score}%`
+                  : `Layout check ${preflight.score}%`}
               </span>
             </button>
           </div>
@@ -180,10 +200,10 @@ export function BookStudioModal({
               <div className="preflight-inspector-header">
                 <h4>
                   <ShieldCheck size={16} />
-                  {lang === 'bn' ? 'প্রি-ফ্লাইট প্রেস ইন্সপেকশন রিপোর্ট' : 'Pre-flight Press Inspection Report'}
+                  {lang === 'bn' ? 'লেআউট চেকলিস্ট' : 'Layout checklist'}
                 </h4>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span className={`preflight-score-badge ${preflight.isPressReady ? 'pass' : 'warning'}`}>
+                  <span className={`preflight-score-badge ${checksClear ? 'pass' : 'warning'}`}>
                     {preflight.score}/100
                   </span>
                   <button
@@ -202,6 +222,7 @@ export function BookStudioModal({
                     <div className="issue-header">
                       <span className="issue-title">
                         {issue.type === 'pass' && <CheckCircle size={14} color="#16a34a" />}
+                        {issue.type === 'error' && <AlertTriangle size={14} color="#dc2626" />}
                         {issue.type === 'warning' && <AlertTriangle size={14} color="#d97706" />}
                         {issue.type === 'info' && <Info size={14} color="#0284c7" />}
                         {issue.title}
@@ -265,7 +286,7 @@ export function BookStudioModal({
               <button
                 type="button"
                 className="export-pill-btn pdf"
-                disabled={!!busy}
+                disabled={!!busy || !isPro}
                 onClick={() => exportFile('pdf')}
                 title={lang === 'bn' ? 'প্রিন্ট-রেডি PDF তৈরি করুন' : 'Export Print PDF'}
               >
@@ -276,7 +297,7 @@ export function BookStudioModal({
               <button
                 type="button"
                 className="export-pill-btn docx"
-                disabled={!!busy}
+                disabled={!!busy || !isPro}
                 onClick={() => exportFile('docx')}
                 title={lang === 'bn' ? 'সম্পাদনাযোগ্য Word (.docx) ফাইল' : 'Export Word .docx'}
               >
@@ -287,7 +308,7 @@ export function BookStudioModal({
               <button
                 type="button"
                 className="export-pill-btn epub"
-                disabled={!!busy}
+                disabled={!!busy || !isPro}
                 onClick={() => exportFile('epub')}
                 title={lang === 'bn' ? 'ই-বুক (.epub) ফাইল তৈরি করুন' : 'Export EPUB'}
               >
@@ -298,7 +319,7 @@ export function BookStudioModal({
               <button
                 type="button"
                 className="export-pill-btn cover"
-                disabled={!!busy}
+                disabled={!!busy || !isPro}
                 onClick={() => exportFile('cover')}
                 title={lang === 'bn' ? 'বইয়ের প্রচ্ছদ ও স্পাইন PDF' : 'Export Cover PDF'}
               >
@@ -317,6 +338,14 @@ export function BookStudioModal({
         {statusMsg && (
           <div className={`modal-status-toast ${statusMsg.type}`}>
             {statusMsg.text}
+          </div>
+        )}
+
+        {unclosedBoxes > 0 && (
+          <div className="studio-box-warn" role="alert">
+            {lang === 'bn'
+              ? `${unclosedBoxes}টি :::box বন্ধ হয়নি (:::)। এক্সপোর্টে বক্স চুপচাপ কেটে যেতে পারে — অধ্যায়ে শেষ মার্ক দিন।`
+              : `${unclosedBoxes} unclosed :::box block(s). Export may silently drop them — add a closing ::: in the chapter.`}
           </div>
         )}
 
@@ -499,12 +528,17 @@ export function BookStudioModal({
                       value={settings.fontFamily}
                       onChange={(e) => patch({ fontFamily: e.target.value })}
                     >
-                      <option value="Noto Serif Bengali">Noto Serif Bengali (সর্বাধিক জনপ্রিয় সাহিত্যিক ফন্ট)</option>
-                      <option value="SolaimanLipi">SolaimanLipi (সোলায়মানলিপি - ঐতিহ্যবাহী)</option>
-                      <option value="Kalpurush">Kalpurush (কালপুরুষ - স্পষ্ট ও পরিচ্ছন্ন)</option>
-                      <option value="Tiro Bangla">Tiro Bangla (তিরো বাংলা - ক্লাসিক পাবলিকেশন)</option>
-                      <option value="Hind Siliguri">Hind Siliguri (হিন্দ শিলিগুড়ি - আধুনিক সান্স)</option>
+                      {BOOK_FONTS.map((font) => (
+                        <option key={font.id} value={font.id}>
+                          {lang === 'bn' ? font.labelBn : font.labelEn}
+                        </option>
+                      ))}
                     </select>
+                    <p className="field-hint" style={{ marginTop: 6, fontSize: 12, color: '#64748b' }}>
+                      {lang === 'bn'
+                        ? 'প্রিভিউ ও PDF/EPUB একই ফন্ট এমবেড করে। কালপুরুষ/সোলাইমান এখানে নেই — ফাইল শিপ না হওয়া পর্যন্ত দেখাই না।'
+                        : 'Preview and PDF/EPUB embed this same font. Kalpurush/SolaimanLipi are not listed until those files ship.'}
+                    </p>
                   </div>
 
                   <div className="grid-2-col">
@@ -528,7 +562,7 @@ export function BookStudioModal({
                         value={settings.lineHeight}
                         onChange={(e) => patch({ lineHeight: Number(e.target.value) })}
                       >
-                        {[1.3, 1.4, 1.5, 1.6, 1.7, 1.8].map((n) => (
+                        {[1.3, 1.4, 1.5, 1.55, 1.6, 1.7, 1.8].map((n) => (
                           <option key={n} value={n}>
                             {n}
                           </option>
@@ -1178,6 +1212,69 @@ export function BookStudioModal({
                       onChange={(e) => patch({ coverSubtitle: e.target.value })}
                       placeholder={lang === 'bn' ? 'একটি অনুপ্রেরণাদায়ক নির্দেশিকা' : 'A Practical Guide'}
                     />
+                  </div>
+
+                  <div className="form-group">
+                    <label>{lang === 'bn' ? 'সামনের প্রচ্ছদের ছবি' : 'Front cover art'}</label>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                      <label className="format-action-btn" style={{ cursor: 'pointer' }}>
+                        <ImagePlus size={14} />
+                        <span>{lang === 'bn' ? 'ছবি তুলুন' : 'Upload'}</span>
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp"
+                          hidden
+                          onChange={(e) => {
+                            void onCoverFile('front', e.target.files?.[0]);
+                            e.currentTarget.value = '';
+                          }}
+                        />
+                      </label>
+                      {settings.coverFrontImage && (
+                        <button type="button" className="format-action-btn" onClick={() => patch({ coverFrontImage: '' })}>
+                          {lang === 'bn' ? 'সরান' : 'Remove'}
+                        </button>
+                      )}
+                    </div>
+                    {settings.coverFrontImage && (
+                      <img src={settings.coverFrontImage} alt="" style={{ marginTop: 8, width: 72, height: 96, objectFit: 'cover', borderRadius: 4 }} />
+                    )}
+                  </div>
+
+                  <div className="form-group">
+                    <label>{lang === 'bn' ? 'পেছনের প্রচ্ছদের ছবি' : 'Back cover art'}</label>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                      <label className="format-action-btn" style={{ cursor: 'pointer' }}>
+                        <ImagePlus size={14} />
+                        <span>{lang === 'bn' ? 'ছবি তুলুন' : 'Upload'}</span>
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp"
+                          hidden
+                          onChange={(e) => {
+                            void onCoverFile('back', e.target.files?.[0]);
+                            e.currentTarget.value = '';
+                          }}
+                        />
+                      </label>
+                      {settings.coverBackImage && (
+                        <button type="button" className="format-action-btn" onClick={() => patch({ coverBackImage: '' })}>
+                          {lang === 'bn' ? 'সরান' : 'Remove'}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="form-checkbox">
+                    <input
+                      type="checkbox"
+                      id="coverShowTitle"
+                      checked={settings.coverShowTitle !== false}
+                      onChange={(e) => patch({ coverShowTitle: e.target.checked })}
+                    />
+                    <label htmlFor="coverShowTitle">
+                      {lang === 'bn' ? 'ছবির উপর নাম ও লেখক দেখাও' : 'Show title on cover art'}
+                    </label>
                   </div>
 
                   <div className="form-group">

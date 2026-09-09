@@ -33,6 +33,28 @@ import {
   trimSizeMm,
 } from '../lib/book-layout';
 import { parseChapterContent, toBengaliNumerals, type BookBlock } from '../lib/book-parser';
+import { fontBases, resolveBookFont } from '../lib/book-fonts';
+
+function BookFontFaces({ family }: { family: string }) {
+  const spec = resolveBookFont(family);
+  const bases = typeof document === 'undefined' ? [] : fontBases();
+  const src = (file: string) => bases.map((b) => `url('${b}/${file}')`).join(', ');
+  return (
+    <style>{`
+      @font-face { font-family: '${spec.id}'; font-weight: 400; src: ${src(spec.regular)}; }
+      @font-face { font-family: '${spec.id}'; font-weight: 700; src: ${src(spec.bold)}; }
+    `}</style>
+  );
+}
+
+function coverArtStyle(image: string | undefined, color: string | undefined): React.CSSProperties {
+  return {
+    backgroundColor: color || '#1e3d32',
+    backgroundImage: image ? `url(${image})` : undefined,
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
+  };
+}
 
 export type PreviewMode = 'spread' | 'single' | 'cover' | 'wrap' | '3d';
 export type DeviceMode = 'print' | 'kindle' | 'tablet' | 'mobile';
@@ -661,6 +683,7 @@ export function BookPreview({
 
   return (
     <div className={`book-preview-container ${isExpanded ? 'is-expanded' : 'is-sidebar'}`}>
+      <BookFontFaces family={settings.fontFamily} />
       {/* Top Preview Controls Bar */}
       <div className="book-preview-toolbar">
         <div className="toolbar-group">
@@ -890,13 +913,15 @@ export function BookPreview({
             <div
               className="book-cover-3d"
               style={{
-                backgroundColor: settings.coverColor || '#1e3d32',
+                ...coverArtStyle(settings.coverFrontImage, settings.coverColor),
                 width: `${pageW}px`,
                 minHeight: `${pageH}px`,
                 padding: `${padTop * 1.2}px ${padOut * 1.2}px`,
                 fontFamily: settings.fontFamily,
               }}
             >
+              {(settings.coverShowTitle !== false || !settings.coverFrontImage) && (
+                <>
               <div className="cover-badge">{lang === 'bn' ? 'বইয়ের প্রচ্ছদ' : 'Book Cover'}</div>
               <div className="cover-center-content">
                 <h1 className="cover-main-title">{project.title || (lang === 'bn' ? 'বইয়ের নাম' : 'Book Title')}</h1>
@@ -911,6 +936,8 @@ export function BookPreview({
                 <span className="cover-author-name">{settings.author || (lang === 'bn' ? 'লেখকের নাম' : 'Author Name')}</span>
                 {settings.publisher && <span className="cover-publisher-name">{settings.publisher}</span>}
               </div>
+                </>
+              )}
             </div>
             <div className="cover-meta-caption">
               <span>
@@ -940,6 +967,7 @@ export function BookPreview({
                   width: `${pageW}px`,
                   minHeight: `${pageH}px`,
                   padding: `${padTop}px ${padOut}px`,
+                  ...coverArtStyle(settings.coverBackImage, undefined),
                 }}
               >
                 <div>
@@ -1015,26 +1043,31 @@ export function BookPreview({
                   width: `${pageW}px`,
                   minHeight: `${pageH}px`,
                   padding: `${padTop}px ${padOut}px`,
+                  ...coverArtStyle(settings.coverFrontImage, undefined),
                 }}
               >
-                <div className="cover-badge">{lang === 'bn' ? 'সামনের প্রচ্ছদ' : 'Front Cover'}</div>
-                <div className="cover-center-content">
-                  <h1 className="cover-main-title">{project.title || (lang === 'bn' ? 'বইয়ের নাম' : 'Book Title')}</h1>
-                  {settings.coverSubtitle && <p className="cover-sub-title">{settings.coverSubtitle}</p>}
-                  {settings.showChapterDecor && (
-                    <div className="cover-decor-line">
-                      {SCENE_BREAK_MOTIFS[settings.sceneBreakMotif || 'motifClassic']?.symbol || '❖ — ❖ — ❖'}
+                {(settings.coverShowTitle !== false || !settings.coverFrontImage) && (
+                  <>
+                    <div className="cover-badge">{lang === 'bn' ? 'সামনের প্রচ্ছদ' : 'Front Cover'}</div>
+                    <div className="cover-center-content">
+                      <h1 className="cover-main-title">{project.title || (lang === 'bn' ? 'বইয়ের নাম' : 'Book Title')}</h1>
+                      {settings.coverSubtitle && <p className="cover-sub-title">{settings.coverSubtitle}</p>}
+                      {settings.showChapterDecor && (
+                        <div className="cover-decor-line">
+                          {SCENE_BREAK_MOTIFS[settings.sceneBreakMotif || 'motifClassic']?.symbol || '❖ — ❖ — ❖'}
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-                <div className="cover-bottom-author">
-                  <span className="cover-author-name">{settings.author || (lang === 'bn' ? 'লেখকের নাম' : 'Author Name')}</span>
-                  {settings.publisher && <span className="cover-publisher-name">{settings.publisher}</span>}
-                </div>
+                    <div className="cover-bottom-author">
+                      <span className="cover-author-name">{settings.author || (lang === 'bn' ? 'লেখকের নাম' : 'Author Name')}</span>
+                      {settings.publisher && <span className="cover-publisher-name">{settings.publisher}</span>}
+                    </div>
+                  </>
+                )}
               </div>
             </div>
             <div className="cover-meta-caption" style={{ textAlign: 'center', marginTop: '10px' }}>
-              <span>📐 ফুল কভার র‍্যাপ স্প্রেড (ব্যাক + স্পাইন {calculatedSpine}mm + ফ্রন্ট) · প্রেস-রেডি কাটিং ও ক্রপ মার্কস</span>
+              <span>📐 ফুল কভার র‍্যাপ স্প্রেড (ব্যাক + স্পাইন {calculatedSpine}mm + ফ্রন্ট)</span>
             </div>
           </div>
         )}
@@ -1045,7 +1078,7 @@ export function BookPreview({
             <div
               className="book-3d-object"
               style={{
-                backgroundColor: settings.coverColor || '#1e3d32',
+                ...coverArtStyle(settings.coverFrontImage, settings.coverColor),
                 width: `${pageW * 0.95}px`,
                 minHeight: `${pageH * 0.95}px`,
                 padding: `${padTop}px ${padOut}px`,
@@ -1059,22 +1092,26 @@ export function BookPreview({
               <div className="book-3d-spine-edge" />
               <div className="book-3d-pages-stack" />
 
-              <div className="cover-badge" style={{ alignSelf: 'flex-start' }}>3D Realistic Book</div>
-              <div className="cover-center-content">
-                <h1 className="cover-main-title" style={{ fontSize: `${ptToPx(settings.fontSize * 2.1, 20)}px` }}>
-                  {project.title || 'বইয়ের নাম'}
-                </h1>
-                {settings.coverSubtitle && <p className="cover-sub-title">{settings.coverSubtitle}</p>}
-                {settings.showChapterDecor && (
-                  <div className="cover-decor-line">
-                    {SCENE_BREAK_MOTIFS[settings.sceneBreakMotif || 'motifClassic']?.symbol || '❖ — ❖ — ❖'}
+              {(settings.coverShowTitle !== false || !settings.coverFrontImage) && (
+                <>
+                  <div className="cover-badge" style={{ alignSelf: 'flex-start' }}>3D Realistic Book</div>
+                  <div className="cover-center-content">
+                    <h1 className="cover-main-title" style={{ fontSize: `${ptToPx(settings.fontSize * 2.1, 20)}px` }}>
+                      {project.title || 'বইয়ের নাম'}
+                    </h1>
+                    {settings.coverSubtitle && <p className="cover-sub-title">{settings.coverSubtitle}</p>}
+                    {settings.showChapterDecor && (
+                      <div className="cover-decor-line">
+                        {SCENE_BREAK_MOTIFS[settings.sceneBreakMotif || 'motifClassic']?.symbol || '❖ — ❖ — ❖'}
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-              <div className="cover-bottom-author">
-                <span className="cover-author-name">{settings.author || 'লেখকের নাম'}</span>
-                {settings.publisher && <span className="cover-publisher-name">{settings.publisher}</span>}
-              </div>
+                  <div className="cover-bottom-author">
+                    <span className="cover-author-name">{settings.author || 'লেখকের নাম'}</span>
+                    {settings.publisher && <span className="cover-publisher-name">{settings.publisher}</span>}
+                  </div>
+                </>
+              )}
             </div>
           </div>
         )}

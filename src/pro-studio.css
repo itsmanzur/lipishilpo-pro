@@ -1122,6 +1122,7 @@
 }
 .preflight-issue-card.pass { background: #f0fdf4; border-color: #bbf7d0; }
 .preflight-issue-card.warning { background: #fffbeb; border-color: #fde68a; }
+.preflight-issue-card.error { background: #fef2f2; border-color: #fecaca; }
 .preflight-issue-card.info { background: #f8fafc; border-color: #e2e8f0; }
 
 .issue-header {
@@ -1139,6 +1140,7 @@
 }
 .preflight-issue-card.pass .issue-title { color: #166534; }
 .preflight-issue-card.warning .issue-title { color: #92400e; }
+.preflight-issue-card.error .issue-title { color: #991b1b; }
 .preflight-issue-card.info .issue-title { color: #334155; }
 
 .issue-message {
@@ -1442,5 +1444,15 @@
   background: #ffffff;
   color: #0f766e;
   box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+}
+
+.studio-box-warn {
+  margin: 0;
+  padding: 8px 20px;
+  background: #fef2f2;
+  color: #991b1b;
+  font-size: 13px;
+  font-weight: 600;
+  border-bottom: 1px solid #fecaca;
 }
 

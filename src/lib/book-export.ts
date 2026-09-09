@@ -21,6 +21,8 @@ import {
   validateSettings,
 } from './book-layout';
 import { parseChapterContent, toBengaliNumerals, type BookBlock } from './book-parser';
+import { fontBases, resolveBookFont } from './book-fonts';
+import { isCoverDataUrl } from './cover-image';
 
 export type { BookSettings } from './book-layout';
 export { defaultBookSettings, validateSettings } from './book-layout';
@@ -51,23 +53,31 @@ async function fetchFont(base: string, name: string): Promise<Uint8Array | null>
   return new Uint8Array(await r.arrayBuffer());
 }
 
-export async function loadFonts(): Promise<FontFiles> {
-  const root = document.getElementById('lipishilpo-root');
-  const fontsBase = (root?.dataset.fontsUrl ?? '/fonts/').replace(/\/$/, '');
+export async function loadFonts(family?: string): Promise<FontFiles> {
+  const spec = resolveBookFont(family);
+  const bases = fontBases();
+
+  async function firstHit(name: string): Promise<Uint8Array | null> {
+    for (const base of bases) {
+      const file = await fetchFont(base, name);
+      if (file) return file;
+    }
+    return null;
+  }
 
   const [regular, boldTry, license, latin, latinBoldTry] = await Promise.all([
-    fetchFont(fontsBase, 'NotoSerifBengali-Regular.ttf'),
-    fetchFont(fontsBase, 'NotoSerifBengali-Bold.ttf'),
-    fetchFont(fontsBase, 'OFL.txt'),
-    fetchFont(fontsBase, 'NotoSerif-Regular.ttf'),
-    fetchFont(fontsBase, 'NotoSerif-Bold.ttf'),
+    firstHit(spec.regular),
+    firstHit(spec.bold),
+    firstHit('OFL.txt'),
+    firstHit('NotoSerif-Regular.ttf'),
+    firstHit('NotoSerif-Bold.ttf'),
   ]);
   if (!regular || !latin || !license) {
     throw new Error('বাংলা ফন্ট লোড হয়নি। সংযোগ পরীক্ষা করে আবার চেষ্টা করুন।');
   }
   return {
     regular,
-    bold: boldTry && boldTry.byteLength !== regular.byteLength ? boldTry : regular,
+    bold: boldTry && boldTry.byteLength > 1000 ? boldTry : regular,
     license,
     latin,
     latinBold: latinBoldTry && latinBoldTry.byteLength !== latin.byteLength ? latinBoldTry : latin,
@@ -922,23 +932,48 @@ export async function makeCoverPdf(
   }
 
   const marks = s.includeCropMarks ? wrapCropMarks(pageW, pageH, extraPt, bleedPt) : [];
+  const innerH = pageH - extraPt * 2;
+  const frontHasArt = isCoverDataUrl(s.coverFrontImage);
+  const backHasArt = isCoverDataUrl(s.coverBackImage);
+  const showFrontText = s.coverShowTitle !== false || !frontHasArt;
   const def: TDocumentDefinitions = {
     pageSize: { width: pageW, height: pageH },
     pageMargins: [extraPt, extraPt, extraPt, extraPt],
     defaultStyle: { font: 'NotoBengali', color: cream },
-    background: () => ({
-      canvas: [
+    background: () => {
+      const layers: Content[] = [
         {
-          type: 'rect',
-          x: 0,
-          y: 0,
-          w: pageW,
-          h: pageH,
-          color: `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`,
+          canvas: [
+            {
+              type: 'rect',
+              x: 0,
+              y: 0,
+              w: pageW,
+              h: pageH,
+              color: `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`,
+            },
+            ...(marks.length ? marks : []),
+          ],
         },
-        ...(marks.length ? marks : []),
-      ],
-    }),
+      ];
+      if (backHasArt) {
+        layers.push({
+          image: s.coverBackImage,
+          width: backW,
+          height: innerH,
+          absolutePosition: { x: extraPt, y: extraPt },
+        });
+      }
+      if (frontHasArt) {
+        layers.push({
+          image: s.coverFrontImage,
+          width: frontW,
+          height: innerH,
+          absolutePosition: { x: extraPt + backW + spineW, y: extraPt },
+        });
+      }
+      return layers;
+    },
     content: [
       {
         columns: [
@@ -970,7 +1005,7 @@ export async function makeCoverPdf(
           },
           {
             width: frontW,
-            stack: frontStack,
+            stack: showFrontText ? frontStack : [{ text: ' ' }],
             margin: [pad * 0.6, pad, pad, pad],
           },
         ],
@@ -1004,7 +1039,7 @@ export async function makeDocx(project: Project, s: BookSettings): Promise<Uint8
     Bookmark,
   } = await import('docx');
   const english = project.language === 'English';
-  const font = 'Noto Serif Bengali';
+  const font = resolveBookFont(s.fontFamily).id;
   const run = {
     font: { ascii: 'Noto Serif', hAnsi: 'Noto Serif', cs: font, eastAsia: font },
     size: s.fontSize * 2,

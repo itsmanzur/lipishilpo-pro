@@ -28,9 +28,15 @@ async function wpFetch(path: string, options: RequestInit = {}): Promise<Respons
   return fetch(restUrl(path), { ...options, headers });
 }
 
-export async function fetchAnalyzeStatus() {
+export async function fetchAnalyzeStatus(): Promise<{
+  configured: boolean;
+  pro: boolean;
+  model: string;
+  provider?: string;
+  maxPartChars: number;
+}> {
   const r = await wpFetch('analyze');
-  if (!r.ok) return { configured: false, pro: false, model: '', maxPartChars: 12000 };
+  if (!r.ok) return { configured: false, pro: false, model: '', provider: '', maxPartChars: 12000 };
   return r.json();
 }
 

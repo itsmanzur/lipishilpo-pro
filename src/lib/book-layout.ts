@@ -112,6 +112,9 @@ export type BookSettings = {
   coverPrice: string;
   coverFinish: 'matte' | 'glossy';
   spineText: string;
+  coverFrontImage: string;
+  coverBackImage: string;
+  coverShowTitle: boolean;
 };
 
 export const PAGE_PRESETS: Record<Exclude<PagePreset, 'custom'>, { w: number; h: number; label: string }> = {
@@ -135,7 +138,8 @@ export type PreflightIssue = {
 export function runPreflightInspection(
   settings: BookSettings,
   totalChars: number,
-  chapterCount: number
+  chapterCount: number,
+  unclosedBoxes = 0,
 ): {
   score: number;
   isPressReady: boolean;
@@ -143,6 +147,13 @@ export function runPreflightInspection(
 } {
   const issues: PreflightIssue[] = [];
   const estPages = estimatePageCount(totalChars, settings);
+
+  issues.push({
+    id: 'checklist_scope',
+    type: 'info',
+    title: 'এটি লেআউট চেকলিস্ট',
+    message: 'গাটার, ফন্ট, ক্রপ মার্ক ও মেটাডাটা দেখায়। প্রেসের bleed/overflow/imposition স্ক্যান নয় — সেটা প্রিন্টার করবে।',
+  });
 
   // 1. Gutter Margin Check
   if (estPages > 280 && settings.marginInnerMm < 22) {
@@ -236,10 +247,28 @@ export function runPreflightInspection(
     });
   }
 
+  if (unclosedBoxes > 0) {
+    issues.push({
+      id: 'unclosed_box',
+      type: 'error',
+      title: 'আনক্লোজড তথ্য বক্স',
+      message: `${unclosedBoxes}টি :::box বন্ধ হয়নি (:::)। এক্সপোর্টে বক্স কেটে যেতে পারে — অধ্যায়ে শেষ মার্ক দিন।`,
+    });
+  }
+
+  if (!settings.coverFrontImage) {
+    issues.push({
+      id: 'cover_art',
+      type: 'info',
+      title: 'কভার আর্ট নেই',
+      message: 'এখন রং ও লেখায় প্রচ্ছদ হচ্ছে। প্রকাশকের আর্ট থাকলে স্টুডিওতে ছবি তুলুন।',
+    });
+  }
+
   const warnings = issues.filter((i) => i.type === 'warning').length;
   const errors = issues.filter((i) => i.type === 'error').length;
-  const score = Math.max(70, 100 - warnings * 10 - errors * 25);
-  const isPressReady = errors === 0 && warnings === 0;
+  const score = Math.max(0, 100 - warnings * 12 - errors * 25);
+  const isPressReady = false;
 
   return { score, isPressReady, issues };
 }
@@ -701,6 +730,9 @@ export const defaultBookSettings: BookSettings = {
   coverPrice: '৳ ৩৫০',
   coverFinish: 'matte',
   spineText: '',
+  coverFrontImage: '',
+  coverBackImage: '',
+  coverShowTitle: true,
 };
 
 function clamp(n: number, min: number, max: number) {
@@ -817,7 +849,9 @@ export function normalizeSettings(raw: Partial<BookSettings> & { marginMm?: numb
     themePreset: raw.themePreset || defaultBookSettings.themePreset,
     year: raw.year || defaultBookSettings.year,
     coverColor: raw.coverColor || defaultBookSettings.coverColor,
-    fontFamily: raw.fontFamily || defaultBookSettings.fontFamily,
+    fontFamily: ['Noto Serif Bengali', 'Hind Siliguri', 'Tiro Bangla'].includes(String(raw.fontFamily))
+      ? String(raw.fontFamily)
+      : defaultBookSettings.fontFamily,
     numberFormat: raw.numberFormat || defaultBookSettings.numberFormat,
     textAlign: raw.textAlign || defaultBookSettings.textAlign,
     paperGsm: raw.paperGsm || defaultBookSettings.paperGsm,
@@ -834,6 +868,9 @@ export function normalizeSettings(raw: Partial<BookSettings> & { marginMm?: numb
     coverPrice: (raw.coverPrice || defaultBookSettings.coverPrice).slice(0, 40),
     coverFinish: raw.coverFinish || defaultBookSettings.coverFinish,
     spineText: raw.spineText || defaultBookSettings.spineText,
+    coverFrontImage: typeof raw.coverFrontImage === 'string' ? raw.coverFrontImage : '',
+    coverBackImage: typeof raw.coverBackImage === 'string' ? raw.coverBackImage : '',
+    coverShowTitle: raw.coverShowTitle !== false,
     halfTitle: raw.halfTitle || defaultBookSettings.halfTitle,
     epigraphText: raw.epigraphText || defaultBookSettings.epigraphText,
     epigraphSource: raw.epigraphSource || defaultBookSettings.epigraphSource,

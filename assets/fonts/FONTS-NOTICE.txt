@@ -1,0 +1,15 @@
+Fonts in this folder (SIL Open Font License 1.1):
+
+- Noto Serif Bengali Regular/Bold and Noto Serif Regular/Bold
+  Copyright 2018 The Noto Project Authors — see OFL.txt
+
+- Hind Siliguri Regular
+  Copyright 2015 The Hind Project Authors (https://github.com/itfoundry/hind)
+  Downloaded from Google Fonts for PDF/EPUB embed.
+
+- Tiro Bangla Regular
+  Copyright 2020 The Tiro Bangla Project Authors
+  Downloaded from Google Fonts for PDF/EPUB embed.
+
+Lipishilpo Pro only lists these families in the studio so preview matches export.
+Kalpurush and SolaimanLipi are not shipped here.

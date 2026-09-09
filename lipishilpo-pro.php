@@ -77,6 +77,12 @@ function lipishilpo_pro_enqueue_assets() {
 		$asset['version'],
 		true
 	);
+
+	wp_add_inline_script(
+		'lipishilpo-pro-editor',
+		'(function(){var r=document.getElementById("lipishilpo-root");if(r){r.setAttribute("data-pro-fonts-url",' . wp_json_encode( LIPISHILPO_PRO_URL . 'assets/fonts' ) . ');}})();',
+		'before'
+	);
 }
 
 /**

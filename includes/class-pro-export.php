@@ -30,7 +30,8 @@ class Lipishilpo_Pro_Export {
 
 	public static function status( $request ) {
 		$licensed = function_exists( 'lipishilpo_is_pro' ) && lipishilpo_is_pro();
-		$fonts    = file_exists( LIPISHILPO_PRO_DIR . 'assets/fonts/NotoSerifBengali-Regular.ttf' );
+		$fonts    = file_exists( LIPISHILPO_PRO_DIR . 'assets/fonts/NotoSerifBengali-Regular.ttf' )
+			|| ( defined( 'LIPISHILPO_DIR' ) && file_exists( LIPISHILPO_DIR . 'assets/fonts/NotoSerifBengali-Regular.ttf' ) );
 
 		return rest_ensure_response(
 			array(

@@ -15,10 +15,12 @@ export function toBengaliNumerals(num: number | string): string {
   return String(num).replace(/[0-9]/g, (d) => bnDigits[Number(d)] ?? d);
 }
 
+export type ParseWarning = { type: "unclosed-box"; title?: string };
+
 /**
  * Parses raw chapter text (Markdown, formatted text, or plain text) into structured book layout blocks.
  */
-export function parseChapterContent(rawText: string): BookBlock[] {
+export function parseChapterContent(rawText: string, warnings?: ParseWarning[]): BookBlock[] {
   if (!rawText) return [];
 
   // Normalize line endings
@@ -72,12 +74,14 @@ export function parseChapterContent(rawText: string): BookBlock[] {
 
       let boxText = "";
       let collected = 0;
+      let closed = false;
       i++;
       while (i < lines.length && collected < 40) {
         const rawLine = lines[i] ?? "";
         const t = rawLine.trim();
         if (isCalloutClose(t)) {
           i++;
+          closed = true;
           break;
         }
         if (isStructuralBreak(t)) {
@@ -86,6 +90,9 @@ export function parseChapterContent(rawText: string): BookBlock[] {
         boxText += (boxText ? "\n" : "") + rawLine;
         i++;
         collected++;
+      }
+      if (!closed) {
+        warnings?.push({ type: "unclosed-box", title });
       }
 
       // Detect variant from title
@@ -222,4 +229,12 @@ export function parseChapterContent(rawText: string): BookBlock[] {
   }
 
   return blocks;
+}
+
+export function countUnclosedCallouts(chapters: { text?: string }[]): number {
+  const warnings: ParseWarning[] = [];
+  for (const ch of chapters) {
+    parseChapterContent(ch.text || "", warnings);
+  }
+  return warnings.filter((w) => w.type === "unclosed-box").length;
 }

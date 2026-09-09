@@ -35,13 +35,11 @@ export const AudioProofreader: React.FC<AudioProofreaderProps> = ({
       const voices = window.speechSynthesis.getVoices();
       setAvailableVoices(voices);
 
-      // Default to Bengali or default voice
-      const bengaliVoice = voices.find((v) => v.lang.startsWith('bn'));
-      if (bengaliVoice) {
-        setSelectedVoiceUri(bengaliVoice.voiceURI);
-      } else if (voices.length > 0) {
-        setSelectedVoiceUri(voices[0].voiceURI);
-      }
+      setSelectedVoiceUri((current) => {
+        if (current) return current;
+        const bengaliVoice = voices.find((v) => v.lang.startsWith('bn'));
+        return bengaliVoice?.voiceURI || voices[0]?.voiceURI || '';
+      });
     }
 
     loadVoices();
@@ -160,8 +158,8 @@ export const AudioProofreader: React.FC<AudioProofreaderProps> = ({
             : 'Listen to your chapter read aloud to naturally detect awkward phrasing, pacing issues, and missing words with Lipishilpo Pro.'}
         </p>
         <ul className="pro-feature-list">
-          <li>{lang === 'bn' ? '🎧 বাংলা ও ইংরেজি প্রাকৃতিক কণ্ঠে পাঠ' : '🎧 Natural Bengali & English Voice Synthesis'}</li>
-          <li>{lang === 'bn' ? '⚡ গতি নিয়ন্ত্রণ (0.75x থেকে 1.5x স্পিড)' : '⚡ Adjustable reading speed rate'}</li>
+          <li>{lang === 'bn' ? '🎧 ব্রাউজারের Web Speech API — নিউরাল স্টুডিও ভয়েস নয়' : '🎧 Browser Web Speech API — not neural studio voices'}</li>
+          <li>{lang === 'bn' ? '⚡ গতি নিয়ন্ত্রণ (0.75x থেকে 2.0x)' : '⚡ Adjustable reading speed (0.75x–2.0x)'}</li>
           <li>{lang === 'bn' ? '🎯 পাঠের সময় লাইভ বাক্য হাইলাইটিং' : '🎯 Live sentence-by-sentence focus highlighting'}</li>
         </ul>
         <a href="https://lipishilpo.com/pro" target="_blank" rel="noopener" className="primary full pro-activate-btn">
@@ -176,10 +174,10 @@ export const AudioProofreader: React.FC<AudioProofreaderProps> = ({
     <div className="audio-proofreader-widget">
       <div className="audio-header">
         <span className="audio-badge">
-          <Volume2 size={16} /> {lang === 'bn' ? 'অডিও প্রুফরিডার (TTS)' : 'Audio Proofreader'}
+          <Volume2 size={16} /> {lang === 'bn' ? 'অডিও প্রুফরিডার (ব্রাউজার TTS)' : 'Audio Proofreader (browser TTS)'}
         </span>
         <div className="speed-pills">
-          {[0.75, 1.0, 1.25, 1.5].map((s) => (
+          {[0.75, 1.0, 1.25, 1.5, 2.0].map((s) => (
             <button
               key={s}
               className={'speed-pill ' + (rate === s ? 'active' : '')}
@@ -196,6 +194,27 @@ export const AudioProofreader: React.FC<AudioProofreaderProps> = ({
           ))}
         </div>
       </div>
+
+      {availableVoices.length > 0 && (
+        <label className="audio-voice-field">
+          <span>{lang === 'bn' ? 'ভয়েস (এই ব্রাউজারে যা আছে)' : 'Voice (installed in this browser)'}</span>
+          <select
+            value={selectedVoiceUri}
+            onChange={(e) => setSelectedVoiceUri(e.target.value)}
+          >
+            {availableVoices.map((v) => (
+              <option key={v.voiceURI} value={v.voiceURI}>
+                {v.name} ({v.lang})
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      <p className="audio-honest-note">
+        {lang === 'bn'
+          ? 'এটি ব্রাউজারের Web Speech API। কণ্ঠ কম্পিউটার/ফোনের উপর নির্ভর করে — আলাদা নিউরাল TTS সার্ভার নয়।'
+          : 'This uses the browser Web Speech API. Voices depend on the device — not a separate neural TTS service.'}
+      </p>
 
       <div className="audio-controls-row">
         {!isPlaying ? (
